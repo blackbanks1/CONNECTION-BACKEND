@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Connection – Live Tracking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+    <!-- Animation + UI -->
+    <style>
+        body {
+            margin: 0;
+            font-family: "Inter", sans-serif;
+            background: #f3f4f6;
+        }
+
+        .header {
+            padding: 12px;
+            background: white;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .logo {
+            height: 36px;
+            margin-right: 12px;
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 60px);
+            display: none;
+            opacity: 0;
+            transition: opacity 0.7s ease;
+        }
+
+        .fade-in {
+            opacity: 1 !important;
+        }
+
+        .loading-box {
+            margin: 40px auto;
+            padding: 20px;
+            background: white;
+            width: 90%;
+            max-width: 380px;
+            text-align: center;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .btn {
+            margin-top: 18px;
+            padding: 12px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .btn:hover {
+            background: #1e50c7;
+        }
+    </style>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <img src="/static/logo.png" class="logo">
+        <div class="title">Connection – Live Tracking</div>
+    </div>
+
+    <!-- Permission Notice / Loader -->
+    <div id="loading_box" class="loading-box">
+        <h3>Location Required</h3>
+        <p>We need your location to show live tracking.</p>
+        <button class="btn" onclick="askPermission()">Allow Location</button>
+    </div>
+
+    <!-- MAP -->
+    <div id="map"></div>
+
+<script>
+    let deliveryId = "{{ delivery_id }}";
+    let map, driverMarker, receiverMarker;
+    let socket = io();
+
+    function askPermission() {
+        navigator.geolocation.getCurrentPosition(
+            function(pos) {
+                // Hide permission box
+                document.getElementById("loading_box").style.display = "none";
+
+                // Show map
+                let m = document.getElementById("map");
+                m.style.display = "block";
+                m.classList.add("fade-in");
+
+                initMap(pos.coords.latitude, pos.coords.longitude);
+                joinSocketRoom();
+                startReceiverUpdates();
+            },
+            function(err) {
+                alert("Location permission needed to continue.");
+            },
+            { enableHighAccuracy: true }
+        );
+    }
+
+    function initMap(lat, lng) {
+        map = L.map("map").setView([lat, lng], 15);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19
+        }).addTo(map);
+
+        receiverMarker = L.marker([lat, lng], { title: "You" }).addTo(map);
+    }
+
+    function joinSocketRoom() {
+        socket.emit("join_delivery", { delivery_id: deliveryId });
+
+        // Listen for driver updates
+        socket.on("driver_update", (data) => {
+            if (!driverMarker) {
+                driverMarker = L.marker([data.lat, data.lng], { title: "Driver" }).addTo(map);
+            } else {
+                driverMarker.setLatLng([data.lat, data.lng]);
+            }
+        });
+    }
+
+    function startReceiverUpdates() {
+        navigator.geolocation.watchPosition(
+            function(pos) {
+                let lat = pos.coords.latitude;
+                let lng = pos.coords.longitude;
+
+                receiverMarker.setLatLng([lat, lng]);
+
+                socket.emit("receiver_update", {
+                    delivery_id: deliveryId,
+                    lat: lat,
+                    lng: lng
+                });
+            },
+            function(err) {},
+            { enableHighAccuracy: true }
+        );
+    }
+</script>
+
+</body>
+</html>

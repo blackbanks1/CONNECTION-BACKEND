@@ -1,0 +1,161 @@
+<!-- templates/admin/index.html -->
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="content-header mb-4">
+  <h3 class="mb-0">Dashboard</h3>
+  <div>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.list_deliveries') }}">
+      <i class="fa-solid fa-list"></i> All Deliveries
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card stats-card bg-white shadow-sm border-0">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="fs-6 text-uppercase text-muted">Active Deliveries</div>
+            <div class="stats-number">{{ active_count }}</div>
+          </div>
+          <i class="fa-solid fa-truck fa-2x text-primary"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stats-card bg-white shadow-sm border-0">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="fs-6 text-uppercase text-muted">Delivered (24h)</div>
+            <div class="stats-number">{{ delivered_24h }}</div>
+          </div>
+          <i class="fa-solid fa-check-circle fa-2x text-success"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stats-card bg-white shadow-sm border-0">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="fs-6 text-uppercase text-muted">Total Deliveries</div>
+            <div class="stats-number">{{ total_deliveries }}</div>
+          </div>
+          <i class="fa-solid fa-boxes-stacked fa-2x text-info"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stats-card bg-white shadow-sm border-0">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="fs-6 text-uppercase text-muted">Today's Revenue</div>
+            <div class="stats-number">${{ "{:,.2f}".format(today_revenue) }}</div>
+          </div>
+          <i class="fa-solid fa-dollar-sign fa-2x text-dark"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Active Deliveries</h5>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Started</th>
+                <th>Status</th>
+                <th>Receiver</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for delivery in active_deliveries %}
+              <tr>
+                <td><a href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}" class="text-decoration-none">{{ delivery.id[:8] }}...</a></td>
+                <td>{{ delivery.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                  <span class="badge bg-{{ 'success' if delivery.status == 'delivered' else 'warning' }}">{{ delivery.status }}</span>
+                </td>
+                <td>{{ delivery.receiver_id }}</td>
+                <td>
+                  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}">View</a>
+                  {% if delivery.status != 'delivered' %}
+                  <a class="btn btn-sm btn-outline-info" href="/?join={{ delivery.id }}" target="_blank">Track</a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-center text-muted">No active deliveries in the last 24 hours.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Daily Deliveries (7 days)</h5>
+        <div style="height:260px">
+          <canvas id="deliveryChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch("{{ url_for('admin.get_delivery_stats') }}");
+    const data = await res.json();
+    const labels = data.daily_counts.map(d => d.date);
+    const values = data.daily_counts.map(d => d.count);
+
+    const ctx = document.getElementById('deliveryChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Deliveries',
+          data: values,
+          borderColor: '#0d6efd',
+          tension: 0.25,
+          fill: false,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 } }
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Failed to load delivery stats', err);
+  }
+});
+</script>
+{% endblock %}

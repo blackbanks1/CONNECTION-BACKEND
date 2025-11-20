@@ -1,0 +1,145 @@
+<!-- templates/admin/revenue.html -->
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Revenue</h4>
+  <div>
+    <a href="{{ url_for('admin.index') }}" class="btn btn-light">Back to Dashboard</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card stats-card shadow-sm">
+      <div class="card-body">
+        <div class="fs-6 text-uppercase text-muted">Today's Revenue</div>
+        <div class="stats-number">${{ "{:,.2f}".format(today_revenue) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stats-card shadow-sm">
+      <div class="card-body">
+        <div class="fs-6 text-uppercase text-muted">Week Revenue</div>
+        <div class="stats-number">${{ "{:,.2f}".format(week_revenue) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stats-card shadow-sm">
+      <div class="card-body">
+        <div class="fs-6 text-uppercase text-muted">Month Revenue</div>
+        <div class="stats-number">${{ "{:,.2f}".format(month_revenue) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stats-card shadow-sm">
+      <div class="card-body">
+        <div class="fs-6 text-uppercase text-muted">Avg. per Delivery</div>
+        <div class="stats-number">${{ "{:,.2f}".format(avg_price) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Revenue Over Time (30 days)</h5>
+        <div style="height:320px"><canvas id="revenueChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Recent Payments</h5>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for delivery in recent_paid %}
+              <tr>
+                <td><a href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}">{{ delivery.id[:8] }}...</a></td>
+                <td>${{ "{:.2f}".format(delivery.price or 0) }}</td>
+                <td><span class="badge bg-{{ 'success' if delivery.payment_status == 'paid' else 'warning' }}">{{ delivery.payment_status }}</span></td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-center text-muted">No recent payments</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <h5 class="card-title">Delivery Metrics</h5>
+        <div class="list-group list-group-flush">
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            Average Distance
+            <span class="badge bg-primary rounded-pill">{{ "{:.1f}".format(avg_distance) }} km</span>
+          </div>
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            Average Duration
+            <span class="badge bg-primary rounded-pill">{{ "{:.0f}".format(avg_duration) }} min</span>
+          </div>
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            Revenue per KM
+            <span class="badge bg-success rounded-pill">${{ "{:.2f}".format(revenue_per_km) }}/km</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch("{{ url_for('admin.revenue_stats') }}");
+    const data = await res.json();
+    const labels = data.daily_revenue.map(d => d.date);
+    const values = data.daily_revenue.map(d => d.amount);
+
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Daily Revenue',
+          data: values,
+          backgroundColor: 'rgba(25, 135, 84, 0.85)',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false } },
+          y: { beginAtZero: true, ticks: { callback: (v) => '$' + v } }
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Failed to load revenue stats', err);
+  }
+});
+</script>
+{% endblock %}

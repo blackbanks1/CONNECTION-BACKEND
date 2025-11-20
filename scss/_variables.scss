@@ -1,0 +1,53 @@
+// Color variables and theme maps
+$accent: #4a88ff;
+$accent-hover: #3a70ff;
+
+// Light theme
+$bg-primary-light: #f8fafc;
+$bg-secondary-light: #ffffff;
+$text-primary-light: #1a2027;
+$text-secondary-light: #475569;
+$border-light: rgba(99,116,154,0.15);
+$card-bg-light: rgba(255,255,255,0.9);
+$input-bg-light: rgba(243,244,246,0.8);
+
+// Dark theme
+$bg-primary-dark: #0a0c10;
+$bg-secondary-dark: rgba(23,26,33,0.95);
+$text-primary-dark: #eaf0ff;
+$text-secondary-dark: #9fb0d0;
+$border-dark: rgba(99,116,154,0.15);
+$card-bg-dark: rgba(17,21,34,0.7);
+$input-bg-dark: rgba(12,16,24,0.6);
+
+// Export to CSS variables for runtime theme toggling
+:root {
+  --accent: #{$accent};
+  --accent-hover: #{$accent-hover};
+  --bg-primary-dark: #{$bg-primary-dark};
+  --bg-secondary-dark: #{$bg-secondary-dark};
+  --text-primary-dark: #{$text-primary-dark};
+  --text-secondary-dark: #{$text-secondary-dark};
+  --border-dark: #{$border-dark};
+  --card-bg-dark: #{$card-bg-dark};
+  --input-bg-dark: #{$input-bg-dark};
+
+  --bg-primary-light: #{$bg-primary-light};
+  --bg-secondary-light: #{$bg-secondary-light};
+  --text-primary-light: #{$text-primary-light};
+  --text-secondary-light: #{$text-secondary-light};
+  --border-light: #{$border-light};
+  --card-bg-light: #{$card-bg-light};
+  --input-bg-light: #{$input-bg-light};
+}
+
+// Default CSS variables (will be overridden by .light-theme class)
+:root {
+  --bg-primary: var(--bg-primary-dark);
+  --bg-secondary: var(--bg-secondary-dark);
+  --text-primary: var(--text-primary-dark);
+  --text-secondary: var(--text-secondary-dark);
+  --border-color: var(--border-dark);
+  --card-bg: var(--card-bg-dark);
+  --input-bg: var(--input-bg-dark);
+}

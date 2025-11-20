@@ -1,0 +1,59 @@
+<!-- templates/admin/deliveries.html -->
+{% extends "admin/base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">All Deliveries</h4>
+  <form class="d-flex gap-2" method="GET" action="{{ url_for('admin.list_deliveries') }}">
+    <input type="text" name="search" class="form-control" placeholder="Search deliveries..." value="{{ search }}">
+    <select name="status" class="form-select" style="width:150px">
+      <option value="">All Status</option>
+      <option value="en_route" {% if status == 'en_route' %}selected{% endif %}>En Route</option>
+      <option value="delivered" {% if status == 'delivered' %}selected{% endif %}>Delivered</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Filter</button>
+  </form>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Started</th>
+            <th>Driver</th>
+            <th>Receiver</th>
+            <th>Consent</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for delivery in deliveries %}
+          <tr>
+            <td><a href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}" class="text-decoration-none">{{ delivery.id[:8] }}...</a></td>
+            <td><span class="badge bg-{{ 'success' if delivery.status == 'delivered' else 'warning' }}">{{ delivery.status }}</span></td>
+            <td>{{ delivery.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ delivery.driver_id }}</td>
+            <td>{{ delivery.receiver_id }}</td>
+            <td>
+              <span class="badge bg-{{ 'success' if delivery.receiver_consented else 'danger' }}">{{ 'Yes' if delivery.receiver_consented else 'No' }}</span>
+            </td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}">View</a>
+              {% if delivery.status != 'delivered' %}
+              <a class="btn btn-sm btn-outline-info" href="/?join={{ delivery.id }}" target="_blank">Track</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted">No deliveries found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
