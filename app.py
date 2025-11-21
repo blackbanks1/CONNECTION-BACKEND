@@ -13,7 +13,7 @@ from routes.route_services import route_bp
 from driver_routes import driver_bp
 from driver_auth import driver_auth
 from receiver_routes import receiver_bp
-from app import db, app
+
 
 
 
