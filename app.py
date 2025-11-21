@@ -187,7 +187,6 @@ def on_receiver_update(data):
     }
     emit("receiver_update", payload, room=str(delivery_id))
 
-
 # -----------------------
 # APP BOOTSTRAP
 # -----------------------

@@ -10,8 +10,8 @@ class Config:
     # DATABASE CONFIG
     # -------------------------
     # Use PostgreSQL in production, SQLite locally
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///connection.db")
-    SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    DSQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL").replace("postgres://", "postgresql://")
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
      
     if os.environ.get("FLASK_ENV") == "production":

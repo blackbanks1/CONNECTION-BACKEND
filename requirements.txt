@@ -1,9 +1,12 @@
 Flask
-Flask-SQLAlchemy
-Flask-Migrate
 Flask-SocketIO
-eventlet
+python-socketio
+python-engineio
 gunicorn
-geopy
+gevent
+gevent-websocket
+SQLAlchemy
+Flask-Login
+Flask-Migrate
 requests
-python-dotenv
+psycopg2-binary
