@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8" />
     <title>Connection — Driver Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -11,256 +13,445 @@
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
     <style>
+        :root{
+            --accent: #0066ff;
+            --muted: #667085;
+            --success: #00b894;
+            --whatsapp: #25D366;
+        }
+
         body {
             margin: 0;
-            padding: 0;
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
             background: #f4f6f9;
-            font-family: Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            color: #222;
         }
 
-        /* NAVBAR */
         .navbar {
-            display: flex;
-            align-items: center;
-            background: #0066ff;
-            padding: 14px 20px;
-            color: white;
-            font-size: 22px;
-            font-weight: bold;
+            display:flex; align-items:center; gap:.75rem;
+            background: var(--accent); color: #fff; padding:12px 18px;
+            font-weight:700;
+        }
+        .navbar img{ height:34px; }
+
+        .container {
+            max-width:1100px; margin:16px auto; padding:0 14px;
         }
 
-        .navbar img {
-            height: 38px;
-            margin-right: 10px;
-        }
-
-        /* CARD */
         .card {
-            width: 90%;
-            max-width: 460px;
-            margin: 30px auto;
-            background: white;
-            padding: 22px;
-            border-radius: 14px;
-            box-shadow: 0 8px 18px rgba(0,0,0,0.12);
-            transition: all 0.4s;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 12px 36px rgba(12,36,80,0.06);
+            padding: 16px;
         }
 
+        .row { display:flex; gap:18px; align-items:flex-start; }
+        .col-left { width:360px; max-width:36%; }
+        .col-right { flex:1; }
+
+        h3 { margin:0 0 8px 0; font-size:18px; }
+        label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
         .input {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            border-radius: 10px;
-            border: 1px solid #bbb;
-            font-size: 16px;
+            width:100%; padding:10px 12px; border-radius:10px; border:1px solid #e6e9ef; font-size:15px;
+            box-sizing:border-box;
         }
 
         .button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            font-size: 17px;
-            background: #0066ff;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: 0.2s;
+            width:100%; padding:12px; border-radius:10px; border:none; font-weight:700; cursor:pointer;
+            background:var(--accent); color:#fff; margin-top:12px; font-size:15px;
         }
+        .button.whatsapp { background: var(--whatsapp); margin-top:8px; }
 
-        .button:hover {
-            opacity: 0.9;
-        }
-
-        .whatsapp {
-            background: #25D366;
-        }
-
-        /* LINK BOX */
         .link-box {
-            background: #eef4ff;
+            display:block; margin-top:12px; padding:10px 12px; border-radius:8px; background:#eef6ff;
+            color:var(--accent); word-break:break-all; text-decoration:none;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.03);
+        }
+
+        /* MAP BOX - professional shadowed container (not full-screen) */
+        .map-box {
+            margin-top:0;
+            background: #ffffff;
+            border-radius: 12px;
             padding: 12px;
-            margin-top: 15px;
-            border-radius: 10px;
-            display: block;
-            word-break: break-all;
-            color: #0066ff;
-            text-decoration: none;
-            font-size: 15px;
-            box-shadow: inset 0 0 3px rgba(0,0,0,0.08);
+            box-shadow: 0 16px 48px rgba(12,36,80,0.06);
+            position: relative;
+            min-height: 420px;
+        }
+        #map { width:100%; height:72vh; border-radius:8px; display:none; }
+
+        /* Fade-in class */
+        .fade-in { animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(10px);} to { opacity:1; transform:none;} }
+
+        /* Bottom stats overlay centered */
+        .bottom-stats {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 18px;
+            min-width: 220px;
+            background: rgba(255,255,255,0.98);
+            border-radius: 12px;
+            padding: 10px 16px;
+            box-shadow: 0 10px 30px rgba(12,36,80,0.12);
+            font-weight:700;
+            display:none;
+            z-index: 9999;
+            text-align:center;
         }
 
-        /* MAP */
-        #map {
-            width: 94%;
-            height: 70vh;
-            margin: 20px auto;
-            border-radius: 16px;
-            display: none;
-            border: 2px solid #d6ddff;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        }
+        .notice { color:var(--muted); font-size:13px; margin-top:8px; }
 
-        /* ANIMATIONS */
-        .fade-out {
-            animation: fadeOut 0.7s forwards;
-        }
-
-        @keyframes fadeOut {
-            from {opacity: 1;}
-            to {opacity: 0; height: 0; margin: 0; padding: 0; visibility: hidden;}
-        }
-
-        .fade-in {
-            animation: fadeIn 0.8s forwards;
-        }
-
-        @keyframes fadeIn {
-            from {opacity: 0; transform: translateY(20px);}
-            to {opacity: 1; transform: translateY(0);}
-        }
-
-        .notice {
-            text-align: center;
-            font-size: 14px;
-            margin-top: 10px;
-            color: #444;
+        @media (max-width: 900px) {
+            .row { flex-direction:column; }
+            .col-left { width:100%; max-width:100%; }
+            #map { height:60vh; }
         }
     </style>
 </head>
-
 <body>
-
-<div class="navbar">
-    <img src="/static/logo.png">
-    Connection — Driver
-</div>
-
-<div class="card" id="input_card">
-    <h2 style="margin-top:0;">Start a Delivery Session</h2>
-
-    <label>Receiver Phone Number</label>
-    <input class="input" id="receiver_phone" placeholder="E.g. 0788 123 456">
-
-    <button class="button" onclick="createSession()">Create Session</button>
-
-    <p class="notice">Please allow location access when your browser asks.</p>
-
-    <div id="tracking_box" style="display:none;">
-        <a id="tracking_link" href="#" target="_blank" class="link-box"></a>
-        <button class="button whatsapp" onclick="sendWhatsApp()">Send via WhatsApp</button>
+    <div class="navbar">
+        <img src="/static/logo.png" alt="logo">
+        Connection — Driver
     </div>
-</div>
 
-<div id="map"></div>
+    <div class="container">
+        <div class="card row">
+            <div class="col-left">
+                <h3>Start a Delivery Session</h3>
+
+                <label for="receiver_phone">Receiver Phone Number</label>
+                <input id="receiver_phone" class="input" placeholder="E.g. 0788 123 456" />
+
+                <button class="button" id="create_btn" onclick="createSession()">Create Session</button>
+
+                <p class="notice">Please allow location access when your browser asks.</p>
+
+                <div id="tracking_box" style="display:none;">
+                    <a id="tracking_link" href="#" target="_blank" class="link-box"></a>
+                    <button class="button whatsapp" id="wa_send" onclick="sendWhatsApp()">Send via WhatsApp</button>
+                </div>
+            </div>
+
+            <div class="col-right">
+                <div class="map-box">
+                    <div id="map"></div>
+                    <div id="stats" class="bottom-stats"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <script>
-    let socket = io();
-    let map, driverMarker, delivery_id;
+/* ===========================
+   Driver Dashboard Script
+   =========================== */
 
-    /* ----------------------------
-       PHONE CLEANING (RWANDA DEFAULT)
-       ---------------------------- */
-    function cleanPhone(raw) {
-        let cleaned = raw.replace(/\D+/g, "");
+/* --- Socket & state --- */
+const socket = io();
+let map = null;
+let driverMarker = null;
+let receiverMarker = null;
+let routePolyline = null;
 
-        if (cleaned.startsWith("0")) {
-            cleaned = "250" + cleaned.slice(1);
+let delivery_id = null;
+let hasShownMap = false;
+let awaitingWhatsApp = false;
+
+let lastRouteCall = 0;
+const ROUTE_THROTTLE_MS = 1200; // throttle route requests
+
+/* -------------- Utilities -------------- */
+function cleanPhone(raw) {
+    if (!raw) return "";
+    let cleaned = raw.replace(/\D+/g, "");
+    if (cleaned.startsWith("0")) cleaned = "250" + cleaned.slice(1);
+    return cleaned;
+}
+
+function formatKm(km) {
+    return (km || 0).toFixed(2) + " km";
+}
+function formatMin(min) {
+    if (min === undefined || min === null) return "- min";
+    return Math.round(min) + " min";
+}
+
+/* -------------- Create session -------------- */
+async function createSession() {
+    const phone = document.getElementById("receiver_phone").value.trim();
+    if (!phone) return alert("Please enter receiver phone");
+
+    document.getElementById("create_btn").disabled = true;
+
+    try {
+        const res = await fetch("/driver/create-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ receiver_phone: phone })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.error || "Failed to create session");
+            document.getElementById("create_btn").disabled = false;
+            return;
         }
 
-        return cleaned;
+        delivery_id = data.delivery_id;
+        const linkElem = document.getElementById("tracking_link");
+        linkElem.href = data.tracking_link;
+        linkElem.textContent = data.tracking_link;
+        document.getElementById("tracking_box").style.display = "block";
+
+        // join socket room as driver (if connected)
+        if (socket && socket.connected) {
+            socket.emit("join_delivery", { delivery_id, role: "driver" });
+        }
+
+    } catch (err) {
+        console.error(err);
+        alert("Network error");
+    } finally {
+        document.getElementById("create_btn").disabled = false;
     }
+}
 
-    /* ----------------------------
-       CREATE SESSION
-       ---------------------------- */
-    function createSession() {
-        let phone = document.getElementById("receiver_phone").value;
+/* -------------- WhatsApp flow + fade-in -------------- */
+function sendWhatsApp() {
+    const raw = document.getElementById("receiver_phone").value;
+    const phone = cleanPhone(raw);
+    const link = document.getElementById("tracking_link").href;
+    const message = `Track me live:\n${link}`;
 
-        fetch("/driver/create-session", {
+    // open WhatsApp (user will press send there)
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
+
+    // set waiting state and fade to map after timeout
+    awaitingWhatsApp = true;
+
+    // timeout simulates user pressing send in WhatsApp (can't detect actual send)
+    setTimeout(() => {
+        awaitingWhatsApp = false;
+        showMapAfterSend();
+    }, 2200);
+}
+
+function showMapAfterSend(){
+    if (hasShownMap) return;
+    hasShownMap = true;
+
+    // collapse left column visually
+    const left = document.querySelector(".col-left");
+    left.style.transition = "opacity .45s, transform .45s";
+    left.style.opacity = 0;
+    left.style.transform = "translateY(-8px)";
+
+    setTimeout(() => {
+        left.style.display = "none";
+        // show and init map area
+        const m = document.getElementById("map");
+        m.style.display = "block";
+        m.classList.add("fade-in");
+        initMap();
+        startGPS();
+    }, 480);
+}
+
+/* -------------- Map initialization -------------- */
+function initMap() {
+    if (map) return;
+
+    // create map
+    map = L.map("map", { zoomControl: false }).setView([-1.94995, 30.0588], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+    // add zoom control for larger screens
+    if (window.innerWidth > 700) {
+        L.control.zoom({ position: 'topright' }).addTo(map);
+    }
+}
+
+/* -------------- Draw polyline & auto-fit -------------- */
+function drawPolyline(poly) {
+    if (!map) return;
+    // remove old
+    if (routePolyline) {
+        map.removeLayer(routePolyline);
+        routePolyline = null;
+    }
+    if (!poly || poly.length === 0) return;
+
+    // add polyline (Leaflet expects [lat, lng])
+    routePolyline = L.polyline(poly, { color: "#0077ff", weight: 5, opacity: 0.95 }).addTo(map);
+
+    // build bounds
+    let bounds = routePolyline.getBounds();
+
+    if (driverMarker) bounds.extend(driverMarker.getLatLng());
+    if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
+
+    // fit with padding; keep zoom comfortable
+    map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17 });
+}
+
+/* -------------- Route request to backend (/api/route) -------------- */
+async function requestRoute(start, end) {
+    if (!start || !end) return;
+    const now = Date.now();
+    if (now - lastRouteCall < ROUTE_THROTTLE_MS) return;
+    lastRouteCall = now;
+
+    try {
+        const res = await fetch("/api/route", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ receiver_phone: phone })
-        })
-        .then(res => res.json())
-        .then(data => {
-            delivery_id = data.delivery_id;
-
-            document.getElementById("tracking_box").style.display = "block";
-            let linkElem = document.getElementById("tracking_link");
-            linkElem.href = data.tracking_link;
-            linkElem.textContent = data.tracking_link;
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start, end })
         });
+        const j = await res.json();
+        if (!res.ok) {
+            console.warn("Route error", j);
+            return;
+        }
+
+        // j.polyline = [[lat,lng], ...], j.distance_km, j.eta_min
+        drawPolyline(j.polyline || []);
+        const stats = document.getElementById("stats");
+        stats.style.display = "block";
+        stats.innerText = `${formatKm(j.distance_km)} · ${formatMin(j.eta_min)}`;
+    } catch (err) {
+        console.error("requestRoute error", err);
+    }
+}
+
+/* -------------- GPS watch - driver position -------------- */
+function startGPS() {
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
     }
 
+    navigator.geolocation.watchPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const dpos = { lat, lng };
 
-    /* ----------------------------
-       WHATSAPP SHARE + RETURN TO MAP
-       ---------------------------- */
-    function sendWhatsApp() {
-        let raw = document.getElementById("receiver_phone").value;
-        let phone = cleanPhone(raw);
-        let link = document.getElementById("tracking_link").href;
+        // driver marker
+        if (!driverMarker) {
+            driverMarker = L.marker([lat, lng]).addTo(map);
+        } else {
+            driverMarker.setLatLng([lat, lng]);
+        }
 
-        let message = `Track me live:\n${link}`;
+        // refresh route if we have receiver
+        if (receiverMarker) {
+            const rpos = receiverMarker.getLatLng();
+            requestRoute(dpos, { lat: rpos.lat, lng: rpos.lng });
+        }
 
-        // Open WhatsApp app/web
-        window.open(
-            `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
-            "_blank"
-        );
-
-        // User returns → map appears
-        setTimeout(() => {
-            fadeIntoMap();
-        }, 2000);
-    }
-
-
-    /* ----------------------------
-       MAP + GPS
-       ---------------------------- */
-    function fadeIntoMap() {
-        document.getElementById("input_card").classList.add("fade-out");
-
-        setTimeout(() => {
-            let m = document.getElementById("map");
-            m.style.display = "block";
-            m.classList.add("fade-in");
-
-            initMap();
-            startGPS();
-        }, 700);
-    }
-
-    function initMap() {
-        map = L.map("map").setView([-1.94995, 30.0588], 14);
-
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-            .addTo(map);
-    }
-
-    function startGPS() {
-        navigator.geolocation.watchPosition(pos => {
-            let lat = pos.coords.latitude;
-            let lng = pos.coords.longitude;
-
-            if (!driverMarker) {
-                driverMarker = L.marker([lat, lng]).addTo(map);
-            } else {
-                driverMarker.setLatLng([lat, lng]);
-            }
-
-            map.setView([lat, lng]);
-
+        // emit driver position to server
+        if (delivery_id) {
             socket.emit("driver_update", {
-                delivery_id: delivery_id,
-                lat: lat,
-                lng: lng
+                delivery_id,
+                lat,
+                lng
             });
-        });
-    }
-</script>
+        }
+    }, err => {
+        console.warn("GPS error", err);
+    }, { enableHighAccuracy: true, maximumAge: 1000 });
+}
 
+/* -------------- Socket events -------------- */
+socket.on("connect", () => {
+    console.log("socket connected");
+    if (delivery_id && socket.connected) {
+        socket.emit("join_delivery", { delivery_id, role: "driver" });
+    }
+});
+
+socket.on("driver_update", data => {
+    if (!data || !data.lat || !data.lng) return;
+    if (!driverMarker && map) {
+        driverMarker = L.marker([data.lat, data.lng]).addTo(map);
+    } else if (driverMarker) {
+        driverMarker.setLatLng([data.lat, data.lng]);
+    }
+});
+
+socket.on("receiver_update", data => {
+    if (!data || data.lat === undefined || data.lng === undefined) return;
+    const lat = parseFloat(data.lat);
+    const lng = parseFloat(data.lng);
+
+    if (!receiverMarker && map) {
+        receiverMarker = L.marker([lat, lng]).addTo(map);
+    } else if (receiverMarker) {
+        receiverMarker.setLatLng([lat, lng]);
+    }
+
+    // if driver exists, request route
+    if (driverMarker) {
+        const dpos = driverMarker.getLatLng();
+        requestRoute({ lat: dpos.lat, lng: dpos.lng }, { lat, lng });
+    } else if (map) {
+        // center on receiver until driver appears
+        map.setView([lat, lng], 14);
+    }
+});
+
+/* -------------- Utility: join room when createSession wraps -------------- */
+(function wrapCreateSession() {
+    const orig = createSession;
+    window.createSession = async function() {
+        await orig();
+        // join room on socket after session created
+        if (delivery_id && socket && socket.connected) {
+            socket.emit("join_delivery", { delivery_id, role: "driver" });
+        }
+    };
+})();
+
+/* -------------- Optional debug helper (local testing) -------------- */
+function simulateReceiver(lat, lng) {
+    // useful while testing: fake a receiver_update from server
+    socket.emit("receiver_update", { delivery_id: delivery_id, lat: lat, lng: lng });
+}
+
+
+function normalizeRwandaNumber(num) {
+    if (!num) return null;
+    num = num.replace(/\D/g, "");
+
+    if (num.startsWith("07")) {
+        return "250" + num.slice(1);
+    }
+    if (num.startsWith("2507")) {
+        return num;
+    }
+    if (num.length === 9 && num.startsWith("7")) {
+        return "250" + num;
+    }
+    return num;
+
+
+function openWhatsApp(phoneNumber, message) {
+    const normalized = normalizeRwandaNumber(phoneNumber);
+
+    if (!normalized) {
+        alert("WhatsApp number missing");
+        return;
+    }
+
+    const encoded = encodeURIComponent(message || "");
+    const url = `https://wa.me/${normalized}?text=${encoded}`;
+    window.location.href = url;
+}
+}
+
+
+/* -------------- End of script -------------- */
+</script>
 </body>
 </html>

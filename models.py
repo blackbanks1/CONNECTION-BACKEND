@@ -24,11 +24,14 @@ class JoinToken(db.Model):
 
     @staticmethod
     def generate(delivery_id, hours=24):
+        token_string = secrets.token_hex(16)
+
         token = JoinToken(
-            token=secrets.token_urlsafe(16),
+            token=token_string,
             delivery_id=delivery_id,
             expires_at=datetime.utcnow() + timedelta(hours=hours)
         )
+
         db.session.add(token)
         db.session.commit()
         return token
@@ -102,24 +105,29 @@ class User(db.Model):
         self.daily_pass_expires = datetime.utcnow() + timedelta(hours=hours)
         db.session.add(self)
         db.session.commit()
+        # -------------------------
+    # Trial logic
+    # -------------------------
+    def start_trial(self):
+        """Start a 7-day free trial for new users."""
+        self.trial_end_date = datetime.utcnow() + timedelta(days=7)
+
+    def trial_active(self):
+        """Returns True if user is still within free trial."""
+        return self.trial_end_date and datetime.utcnow() < self.trial_end_date
+
+    def trial_days_left(self):
+        """Returns remaining days in the trial."""
+        if not self.trial_end_date:
+            return 0
+        remaining = self.trial_end_date - datetime.utcnow()
+        return max(remaining.days, 0)
+    
 
     def __repr__(self):
         return f"<User {self.username}>"
     
-def start_trial(self):
-    """Start a 7-day free trial for new users."""
-    self.trial_end_date = datetime.utcnow() + timedelta(days=7)
 
-def trial_active(self):
-    """Returns True if user is still within free trial."""
-    return self.trial_end_date and datetime.utcnow() < self.trial_end_date
-
-def trial_days_left(self):
-    """Returns how many days remain in the user's free trial."""
-    if not self.trial_end_date:
-        return 0
-    remaining = self.trial_end_date - datetime.utcnow()
-    return max(remaining.days, 0)
 
 
 # ============================================================

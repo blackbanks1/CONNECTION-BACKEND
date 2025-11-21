@@ -1,15 +1,17 @@
 # receiver_routes.py
 from flask import Blueprint, render_template, abort
 from datetime import datetime
-from models import JoinToken, Delivery
+from models import db, JoinToken, Delivery
 
-receiver_bp = Blueprint("receiver", __name__)
+receiver_bp = Blueprint("receiver_bp", __name__)
+
 
 @receiver_bp.route("/t/<token>")
 def open_tracking_page(token):
 
     # Token stored as primary key
-    join_token = JoinToken.query.get(token)
+    join_token = JoinToken.query.filter_by(token=token).first()
+
     if not join_token:
         return abort(404)
 

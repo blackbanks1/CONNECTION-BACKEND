@@ -9,24 +9,35 @@ import requests
 
 from config import Config
 from models import db, User, Delivery, JoinToken
+from routes.route_services import route_bp
 from driver_routes import driver_bp
 from driver_auth import driver_auth
 from receiver_routes import receiver_bp
 
+
+
+
 # create SocketIO instance (will be initialized with app inside create_app)
-socketio = SocketIO(cors_allowed_origins="*")
+socketio = SocketIO(cors_allowed_origins="*", manage_session=False)
+
+
 
 
 # Compatibility wrapper: JoinToken.generate may accept different param names
 _orig_generate = getattr(JoinToken, "generate", None)
+
 if _orig_generate:
     def _generate_compat(delivery_id, expires_in_hours=None, hours=None):
+        # prefer explicit param
         if expires_in_hours is not None:
             return _orig_generate(delivery_id, hours=expires_in_hours)
         if hours is not None:
             return _orig_generate(delivery_id, hours=hours)
         return _orig_generate(delivery_id, hours=24)
+
+    # replace staticmethod with a new staticmethod
     JoinToken.generate = staticmethod(_generate_compat)
+
 
 
 def haversine_meters(lat1, lon1, lat2, lon2):
@@ -46,10 +57,10 @@ def create_app():
     db.init_app(app)
 
     # register blueprints early
-    app.register_blueprint(driver_bp)
-    app.register_blueprint(driver_auth)
-    app.register_blueprint(receiver_bp)
-
+    app.register_blueprint(driver_bp, url_prefix="/driver")
+    app.register_blueprint(driver_auth, url_prefix="/driver")
+    app.register_blueprint(receiver_bp, url_prefix="/t")
+    app.register_blueprint(route_bp, url_prefix="/api")
     # initialize socketio with the app
     socketio.init_app(app)
 
@@ -62,26 +73,6 @@ def create_app():
         # serve driver dashboard template (full real-time UI)
         return render_template("driver.html")
 
-    @app.route("/t/<token>")
-    def track_token(token):
-        # Use JoinToken.token as primary key (string)
-        jt = JoinToken.query.get(token)
-        if not jt:
-            return abort(404)
-
-        # validate
-        if hasattr(jt, "is_valid"):
-            valid = bool(jt.is_valid)
-        else:
-            valid = bool(jt.expires_at is None or jt.expires_at > datetime.utcnow())
-        if not valid:
-            return abort(404)
-
-        delivery = Delivery.query.get(jt.delivery_id)
-        if not delivery:
-            return abort(404)
-
-        return render_template("track.html", delivery_id=delivery.id)
 
     @app.route("/api/route", methods=["POST"])
     def api_route():
