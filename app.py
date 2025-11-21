@@ -13,6 +13,7 @@ from routes.route_services import route_bp
 from driver_routes import driver_bp
 from driver_auth import driver_auth
 from receiver_routes import receiver_bp
+from app import db, app
 
 
 
@@ -191,6 +192,13 @@ def on_receiver_update(data):
 # APP BOOTSTRAP
 # -----------------------
 app = create_app()
+
+with app.app_context():
+    try:
+        db.create_all()
+        print("✔ Database tables created successfully")
+    except Exception as e:
+        print("❌ Error creating tables:", e)
 
 if __name__ == "__main__":
     # convenience: create DB tables if not present (dev only)
