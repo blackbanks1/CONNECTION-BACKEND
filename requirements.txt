@@ -3,8 +3,7 @@ Flask-SocketIO
 python-socketio
 python-engineio
 gunicorn
-gevent
-gevent-websocket
+eventlet
 SQLAlchemy
 Flask-Login
 Flask-Migrate
