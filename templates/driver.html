@@ -285,29 +285,36 @@ function initMap() {
 /* -------------- Draw polyline & auto-fit -------------- */
 function drawPolyline(poly) {
     if (!map) return;
-    // remove old
 
+    // hide map check
     const mapDiv = document.getElementById("map");
     if (mapDiv.style.display === "none") return;
-    
+
+    // remove old route
     if (routePolyline) {
         map.removeLayer(routePolyline);
         routePolyline = null;
     }
+
+    // nothing to draw
     if (!poly || poly.length === 0) return;
 
-    // add polyline (Leaflet expects [lat, lng])
-    routePolyline = L.polyline(poly, { color: "#0077ff", weight: 5, opacity: 0.95 }).addTo(map);
+    // draw line (Leaflet wants [lat, lng])
+    routePolyline = L.polyline(poly, {
+        color: "#0077ff",
+        weight: 5,
+        opacity: 0.95
+    }).addTo(map);
 
-    // build bounds
+    // include both markers in bounds
     let bounds = routePolyline.getBounds();
-
     if (driverMarker) bounds.extend(driverMarker.getLatLng());
     if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
 
-    // fit with padding; keep zoom comfortable
+    // fit map nicely
     map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17 });
 }
+
 
 /* -------------- Route request to backend (/api/route) -------------- */
 async function requestRoute(start, end) {
@@ -328,11 +335,17 @@ async function requestRoute(start, end) {
             return;
         }
 
-        // j.polyline = [[lat,lng], ...], j.distance_km, j.eta_min
-        drawPolyline(j.polyline || []);
-        const stats = document.getElementById("stats");
-        stats.style.display = "block";
-        stats.innerText = `${formatKm(j.distance_km)} · ${formatMin(j.eta_min)}`;
+     // --- draw fallback straight line ---
+drawPolyline([
+    [start.lat, start.lng],
+    [end.lat, end.lng]
+]);
+
+// --- show stats ---
+const stats = document.getElementById("stats");
+stats.style.display = "block";
+stats.innerText = `${formatKm(j.distance_km)} · ${formatMin(j.eta_min)}`;
+
     } catch (err) {
         console.error("requestRoute error", err);
     }
@@ -341,40 +354,67 @@ async function requestRoute(start, end) {
 /* -------------- GPS watch - driver position -------------- */
 function startGPS() {
     if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
+        alert("Your device does not support GPS.");
         return;
     }
 
-    navigator.geolocation.watchPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const dpos = { lat, lng };
+    navigator.geolocation.watchPosition(
+        pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const speed = pos.coords.speed || 0;
 
-        // driver marker
-        if (!driverMarker) {
-            driverMarker = L.marker([lat, lng]).addTo(map);
-        } else {
-            driverMarker.setLatLng([lat, lng]);
-        }
+            const dpos = { lat, lng };
 
-        // refresh route if we have receiver
-        if (receiverMarker) {
-            const rpos = receiverMarker.getLatLng();
-            requestRoute(dpos, { lat: rpos.lat, lng: rpos.lng });
-        }
+            // --- driver marker (mobile-safe) ---
+            if (!driverMarker) {
+                driverMarker = L.marker([lat, lng], {
+                    icon: L.icon({
+                        iconUrl: "/static/driver.png",
+                        iconSize: [40, 40]
+                    })
+                }).addTo(map);
 
-        // emit driver position to server
-        if (delivery_id) {
-            socket.emit("driver_update", {
-                delivery_id,
-                lat,
-                lng
-            });
+                // center on driver first time
+                map.setView([lat, lng], 16);
+            } else {
+                driverMarker.setLatLng([lat, lng]);
+            }
+
+            // --- send update to backend ---
+            if (window.deliveryId) {
+                socket.emit("driver_update", {
+                    delivery_id: window.deliveryId,
+                    lat,
+                    lng,
+                    speed
+                });
+            }
+
+            // --- re-draw route if receiver exists ---
+            if (receiverMarker) {
+                const rpos = receiverMarker.getLatLng();
+                requestRoute(
+                    { lat, lng },
+                    { lat: rpos.lat, lng: rpos.lng }
+                );
+            }
+        },
+
+        // GPS permission error handler
+        err => {
+            console.warn("GPS failed:", err);
+        },
+
+        // Best mobile accuracy
+        {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000
         }
-    }, err => {
-        console.warn("GPS error", err);
-    }, { enableHighAccuracy: true, maximumAge: 1000 });
+    );
 }
+
 
 /* -------------- Socket events -------------- */
 socket.on("connect", () => {

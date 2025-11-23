@@ -264,22 +264,35 @@ async function updateRoute() {
 }
 
 function drawRoute(poly) {
+    if (!map) return;
+
+    // if map is hidden
+    const card = document.getElementById("mapCard");
+    if (card.style.display === "none") return;
+
+    // remove old route
+    if (routePolyline) {
+        map.removeLayer(routePolyline);
+        routePolyline = null;
+    }
+
+    // nothing to draw
     if (!poly || poly.length === 0) return;
 
-    if (routePolyline) map.removeLayer(routePolyline);
-
     routePolyline = L.polyline(poly, {
-        color: "#0066ff",
+        color: "#0077ff",
         weight: 5,
         opacity: 0.95
     }).addTo(map);
 
-    const bounds = routePolyline.getBounds();
+    // include markers in bounds
+    let bounds = routePolyline.getBounds();
     if (driverMarker) bounds.extend(driverMarker.getLatLng());
     if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
 
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
+    map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17 });
 }
+
 
 function showStats(km, min) {
     const box = document.getElementById("stats");

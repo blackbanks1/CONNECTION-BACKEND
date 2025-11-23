@@ -1,4 +1,5 @@
-# app.py (final - cleaned)
+import eventlet
+eventlet.monkey_patch()
 import os
 from datetime import datetime
 from math import radians, cos, sin, asin, sqrt
@@ -13,8 +14,6 @@ from routes.route_services import route_bp
 from driver_routes import driver_bp
 from driver_auth import driver_auth
 from receiver_routes import receiver_bp
-
-
 
 
 
@@ -87,118 +86,147 @@ def create_app():
         data = request.get_json() or {}
         start = data.get("start") or {}
         end = data.get("end") or {}
+        
+        # validate coordinates
         try:
             s_lat = float(start["lat"]); s_lng = float(start["lng"])
             e_lat = float(end["lat"]); e_lng = float(end["lng"])
         except Exception:
             return jsonify({"error": "invalid_coordinates"}), 400
-
+    
+        # -------- ORS ROUTING --------
         ORS_API_KEY = os.getenv("ORS_API_KEY") or app.config.get("ORS_API_KEY")
         if ORS_API_KEY:
             try:
                 url = "https://api.openrouteservice.org/v2/directions/driving-car"
                 coords = [[s_lng, s_lat], [e_lng, e_lat]]
                 payload = {"coordinates": coords}
-                headers = {"Authorization": ORS_API_KEY, "Content-Type": "application/json"}
+                headers = {
+                    "Authorization": ORS_API_KEY,
+                    "Content-Type": "application/json"
+                }
+    
                 r = requests.post(url, json=payload, headers=headers, timeout=8)
                 r.raise_for_status()
                 j = r.json()
-                summary = j["features"][0]["properties"]["summary"]
+    
+                # extract geometry + summary
+                feat = j["features"][0]
+    
+                # ORS gives [lng, lat] — convert to [lat, lng]
+                raw_coords = feat["geometry"]["coordinates"]
+                polyline = [[c[1], c[0]] for c in raw_coords]
+    
+                summary = feat["properties"]["summary"]
                 distance_km = summary["distance"] / 1000.0
                 eta_min = summary["duration"] / 60.0
-                return jsonify({"distance_km": distance_km, "eta_min": eta_min, "via": "ors"})
-            except Exception:
-                # fall back to estimate if ORS fails
+    
+                return jsonify({
+                    "distance_km": distance_km,
+                    "eta_min": eta_min,
+                    "polyline": polyline,
+                    "via": "ors"
+                })
+    
+            except Exception as e:
+                # fallback if ORS fails
                 pass
-
+    
+        # -------- FALLBACK (Haversine) --------
         meters = haversine_meters(s_lat, s_lng, e_lat, e_lng)
         km = meters / 1000.0
         avg_kmh = 30.0
         eta_min = (km / avg_kmh) * 60.0
-        return jsonify({"distance_km": km, "eta_min": eta_min, "via": "estimate", "assumed_kmh": avg_kmh})
+    
+        return jsonify({
+            "distance_km": km,
+            "eta_min": eta_min,
+            "via": "estimate",
+            "assumed_kmh": avg_kmh
+        })
 
-    return app
 
 
-# -----------------------
-# SOCKET HANDLERS (use session inside handlers; socketio must be init'd with app)
-# -----------------------
+app = create_app()
+
 @socketio.on("join_delivery")
 def on_join_delivery(data):
-    delivery_id = data.get("delivery_id")
-    role = data.get("role", "receiver")
-    if not delivery_id or role not in ("driver", "receiver"):
-        emit("error", {"error": "delivery_id and role required"})
-        return
+    with app.app_context():
+        delivery_id = data.get("delivery_id")
+        role = data.get("role", "receiver")
 
-    if role == "driver":
+        if not delivery_id or role not in ("driver", "receiver"):
+            emit("error", {"error": "delivery_id and role required"})
+            return
+
+        if role == "driver":
+            uid = session.get("user_id")
+            if not uid:
+                emit("error", {"error": "driver_not_logged_in"})
+                return
+
+            driver = User.query.get(uid)
+            if not driver or driver.role != "driver":
+                emit("error", {"error": "invalid_driver"})
+                return
+
+            delivery = Delivery.query.get(delivery_id)
+            if not delivery or delivery.driver_id != driver.id:
+                emit("error", {"error": "not_your_delivery"})
+                return
+
+        join_room(str(delivery_id))
+        emit("join_delivery", {"delivery_id": delivery_id, "role": role}, room=str(delivery_id))
+
+@socketio.on("driver_update")
+def on_driver_update(data):
+    with app.app_context():
+        delivery_id = data.get("delivery_id")
+        if not delivery_id:
+            emit("error", {"error": "delivery_id required"})
+            return
+
         uid = session.get("user_id")
         if not uid:
             emit("error", {"error": "driver_not_logged_in"})
             return
+
         driver = User.query.get(uid)
         if not driver or driver.role != "driver":
             emit("error", {"error": "invalid_driver"})
             return
+
         delivery = Delivery.query.get(delivery_id)
         if not delivery or delivery.driver_id != driver.id:
             emit("error", {"error": "not_your_delivery"})
             return
 
-    join_room(str(delivery_id))
-    emit("join_delivery", {"delivery_id": delivery_id, "role": role}, room=str(delivery_id))
+        payload = {
+            "delivery_id": delivery_id,
+            "lat": data.get("lat"),
+            "lng": data.get("lng"),
+            "speed": data.get("speed", None),
+            "ts": datetime.utcnow().isoformat()
+        }
 
-
-@socketio.on("driver_update")
-def on_driver_update(data):
-    delivery_id = data.get("delivery_id")
-    if not delivery_id:
-        emit("error", {"error": "delivery_id required"})
-        return
-
-    uid = session.get("user_id")
-    if not uid:
-        emit("error", {"error": "driver_not_logged_in"})
-        return
-    driver = User.query.get(uid)
-    if not driver or driver.role != "driver":
-        emit("error", {"error": "invalid_driver"})
-        return
-
-    delivery = Delivery.query.get(delivery_id)
-    if not delivery or delivery.driver_id != driver.id:
-        emit("error", {"error": "not_your_delivery"})
-        return
-
-    payload = {
-        "delivery_id": delivery_id,
-        "lat": data.get("lat"),
-        "lng": data.get("lng"),
-        "speed": data.get("speed", None),
-        "ts": datetime.utcnow().isoformat()
-    }
-    emit("driver_update", payload, room=str(delivery_id))
-
+        emit("driver_update", payload, room=str(delivery_id))
 
 @socketio.on("receiver_update")
 def on_receiver_update(data):
-    delivery_id = data.get("delivery_id")
-    if not delivery_id:
-        emit("error", {"error": "delivery_id required"})
-        return
+    with app.app_context():
+        delivery_id = data.get("delivery_id")
+        if not delivery_id:
+            emit("error", {"error": "delivery_id required"})
+            return
 
-    payload = {
-        "delivery_id": delivery_id,
-        "lat": data.get("lat"),
-        "lng": data.get("lng"),
-        "ts": datetime.utcnow().isoformat()
-    }
-    emit("receiver_update", payload, room=str(delivery_id))
+        payload = {
+            "delivery_id": delivery_id,
+            "lat": data.get("lat"),
+            "lng": data.get("lng"),
+            "ts": datetime.utcnow().isoformat()
+        }
 
-# -----------------------
-# APP BOOTSTRAP
-# -----------------------
-app = create_app()
+        emit("receiver_update", payload, room=str(delivery_id))
 
 
 if __name__ == "__main__":
