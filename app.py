@@ -63,7 +63,13 @@ def create_app():
     app.register_blueprint(receiver_bp, url_prefix="/t")
     app.register_blueprint(route_bp, url_prefix="/api")
     # initialize socketio with the app
-    socketio.init_app(app, cors_allowed_origins="*", async_mode="eventlet")
+    socketio.init_app(app,
+    cors_allowed_origins="*",
+    async_mode="eventlet",
+    ping_timeout=25,
+    ping_interval=10
+)
+
 
 
     @app.route("/")

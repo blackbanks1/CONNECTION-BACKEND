@@ -151,10 +151,12 @@
 
 /* --- Socket & state --- */
 const socket = io("https://connection-backend-bdob.onrender.com", {
-    transports: ["websocket"],
-    upgrade: false,
-    reconnection: true
+    transports: ["websocket", "polling"],
+    upgrade: true,
+    reconnection: true,
 });
+
+
 
 let map = null;
 let driverMarker = null;
