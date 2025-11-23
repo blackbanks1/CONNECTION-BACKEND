@@ -434,7 +434,7 @@ function normalizeRwandaNumber(num) {
         return "250" + num;
     }
     return num;
-
+}
 
 function openWhatsApp(phoneNumber, message) {
     const normalized = normalizeRwandaNumber(phoneNumber);
@@ -448,7 +448,8 @@ function openWhatsApp(phoneNumber, message) {
     const url = `https://wa.me/${normalized}?text=${encoded}`;
     window.location.href = url;
 }
-}
+
+
 
 
 /* -------------- End of script -------------- */
