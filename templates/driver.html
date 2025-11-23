@@ -150,11 +150,18 @@
    =========================== */
 
 /* --- Socket & state --- */
-const socket = io();
+const socket = io("https://connection-backend-bdob.onrender.com", {
+    transports: ["websocket"],
+    upgrade: false,
+    reconnection: true
+});
+
 let map = null;
 let driverMarker = null;
 let receiverMarker = null;
 let routePolyline = null;
+let gpsStarted = false;
+
 
 let delivery_id = null;
 let hasShownMap = false;
@@ -277,6 +284,10 @@ function initMap() {
 function drawPolyline(poly) {
     if (!map) return;
     // remove old
+
+    const mapDiv = document.getElementById("map");
+    if (mapDiv.style.display === "none") return;
+    
     if (routePolyline) {
         map.removeLayer(routePolyline);
         routePolyline = null;
@@ -366,10 +377,19 @@ function startGPS() {
 /* -------------- Socket events -------------- */
 socket.on("connect", () => {
     console.log("socket connected");
-    if (delivery_id && socket.connected) {
+
+    // always join the room if delivery_id exists
+    if (delivery_id) {
         socket.emit("join_delivery", { delivery_id, role: "driver" });
     }
+
+    // start GPS only AFTER socket is connected
+    if (hasShownMap && !gpsStarted) {
+        startGPS();
+        gpsStarted = true;
+    }
 });
+
 
 socket.on("driver_update", data => {
     if (!data || !data.lat || !data.lng) return;
@@ -407,9 +427,8 @@ socket.on("receiver_update", data => {
     window.createSession = async function() {
         await orig();
         // join room on socket after session created
-        if (delivery_id && socket && socket.connected) {
-            socket.emit("join_delivery", { delivery_id, role: "driver" });
-        }
+       socket.emit("join_delivery", { delivery_id, role: "driver" });
+
     };
 })();
 
