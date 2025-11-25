@@ -18,7 +18,7 @@ from receiver_routes import receiver_bp
 
 
 # create SocketIO instance (will be initialized with app inside create_app)
-socketio = SocketIO(cors_allowed_origins="*", manage_session=False)
+socketio = SocketIO(cors_allowed_origins="*", async_mode="eventlet")
 
 
 
@@ -69,7 +69,9 @@ def create_app():
     ping_interval=10
 )
 
+    
 
+    
 
     @app.route("/")
     def index():
@@ -230,7 +232,7 @@ def on_receiver_update(data):
 
 
 if __name__ == "__main__":
-    # convenience: create DB tables if not present (dev only)
+
     with app.app_context():
         db.create_all()
     socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), debug=True)
