@@ -15,31 +15,28 @@ from driver_routes import driver_bp
 from driver_auth import driver_auth
 from receiver_routes import receiver_bp
 
-
-
-# create SocketIO instance (will be initialized with app inside create_app)
+# SocketIO must be created BEFORE create_app
 socketio = SocketIO(cors_allowed_origins="*", async_mode="eventlet")
 
-
-
-
-# Compatibility wrapper: JoinToken.generate may accept different param names
+# ---------------------------------------
+# JOIN TOKEN COMPATIBILITY PATCH
+# ---------------------------------------
 _orig_generate = getattr(JoinToken, "generate", None)
 
 if _orig_generate:
     def _generate_compat(delivery_id, expires_in_hours=None, hours=None):
-        # prefer explicit param
         if expires_in_hours is not None:
             return _orig_generate(delivery_id, hours=expires_in_hours)
         if hours is not None:
             return _orig_generate(delivery_id, hours=hours)
         return _orig_generate(delivery_id, hours=24)
 
-    # replace staticmethod with a new staticmethod
     JoinToken.generate = staticmethod(_generate_compat)
 
 
-
+# ---------------------------------------
+# UTILS
+# ---------------------------------------
 def haversine_meters(lat1, lon1, lat2, lon2):
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
     dlon = lon2 - lon1
@@ -49,55 +46,58 @@ def haversine_meters(lat1, lon1, lat2, lon2):
     return 6371000 * c
 
 
+# ---------------------------------------
+# APP FACTORY
+# ---------------------------------------
 def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
 
-    # initialize DB
     db.init_app(app)
 
-    # register blueprints early
+    # Register blueprints
     app.register_blueprint(driver_bp, url_prefix="/driver")
     app.register_blueprint(driver_auth, url_prefix="/driver")
     app.register_blueprint(receiver_bp, url_prefix="/t")
     app.register_blueprint(route_bp, url_prefix="/api")
-    # initialize socketio with the app
-    socketio.init_app(app,
-    cors_allowed_origins="*",
-    async_mode="eventlet",
-    ping_timeout=25,
-    ping_interval=10
-)
 
-    
+    # Attach SocketIO to app
+    socketio.init_app(
+        app,
+        cors_allowed_origins="*",
+        async_mode="eventlet",
+        ping_timeout=25,
+        ping_interval=10
+    )
 
-    
-
+    # -----------------------------
+    # BASIC ROUTES
+    # -----------------------------
     @app.route("/")
     def index():
         return "OK - server running"
 
     @app.route("/driver.html")
     def driver_page():
-        # serve driver dashboard template (full real-time UI)
         return render_template("driver.html")
 
-
+    # -----------------------------
+    # ROUTE API (ORS + FALLBACK)
+    # -----------------------------
     @app.route("/api/route", methods=["POST"])
     def api_route():
         data = request.get_json() or {}
         start = data.get("start") or {}
         end = data.get("end") or {}
-        
-        # validate coordinates
+
         try:
             s_lat = float(start["lat"]); s_lng = float(start["lng"])
             e_lat = float(end["lat"]); e_lng = float(end["lng"])
         except Exception:
             return jsonify({"error": "invalid_coordinates"}), 400
-    
-        # -------- ORS ROUTING --------
+
         ORS_API_KEY = os.getenv("ORS_API_KEY") or app.config.get("ORS_API_KEY")
+
         if ORS_API_KEY:
             try:
                 url = "https://api.openrouteservice.org/v2/directions/driving-car"
@@ -107,39 +107,35 @@ def create_app():
                     "Authorization": ORS_API_KEY,
                     "Content-Type": "application/json"
                 }
-    
+
                 r = requests.post(url, json=payload, headers=headers, timeout=8)
                 r.raise_for_status()
                 j = r.json()
-    
-                # extract geometry + summary
+
                 feat = j["features"][0]
-    
-                # ORS gives [lng, lat] — convert to [lat, lng]
+
                 raw_coords = feat["geometry"]["coordinates"]
                 polyline = [[c[1], c[0]] for c in raw_coords]
-    
+
                 summary = feat["properties"]["summary"]
                 distance_km = summary["distance"] / 1000.0
                 eta_min = summary["duration"] / 60.0
-    
+
                 return jsonify({
                     "distance_km": distance_km,
                     "eta_min": eta_min,
                     "polyline": polyline,
                     "via": "ors"
                 })
-    
-            except Exception as e:
-                # fallback if ORS fails
+
+            except Exception:
                 pass
-    
-        # -------- FALLBACK (Haversine) --------
+
         meters = haversine_meters(s_lat, s_lng, e_lat, e_lng)
         km = meters / 1000.0
         avg_kmh = 30.0
         eta_min = (km / avg_kmh) * 60.0
-    
+
         return jsonify({
             "distance_km": km,
             "eta_min": eta_min,
@@ -147,8 +143,12 @@ def create_app():
             "assumed_kmh": avg_kmh
         })
 
+    return app
 
 
+# ---------------------------------------
+# APP + SOCKETIO EVENTS
+# ---------------------------------------
 app = create_app()
 
 @socketio.on("join_delivery")
@@ -180,6 +180,7 @@ def on_join_delivery(data):
         join_room(str(delivery_id))
         emit("join_delivery", {"delivery_id": delivery_id, "role": role}, room=str(delivery_id))
 
+
 @socketio.on("driver_update")
 def on_driver_update(data):
     with app.app_context():
@@ -207,11 +208,12 @@ def on_driver_update(data):
             "delivery_id": delivery_id,
             "lat": data.get("lat"),
             "lng": data.get("lng"),
-            "speed": data.get("speed", None),
+            "speed": data.get("speed"),
             "ts": datetime.utcnow().isoformat()
         }
 
         emit("driver_update", payload, room=str(delivery_id))
+
 
 @socketio.on("receiver_update")
 def on_receiver_update(data):
@@ -231,8 +233,11 @@ def on_receiver_update(data):
         emit("receiver_update", payload, room=str(delivery_id))
 
 
+# ---------------------------------------
+# LOCAL DEV
+# ---------------------------------------
 if __name__ == "__main__":
-
     with app.app_context():
         db.create_all()
+
     socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), debug=True)
