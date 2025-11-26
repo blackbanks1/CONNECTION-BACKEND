@@ -152,14 +152,10 @@ console.log("RECEIVER deliveryId =", "{{ delivery_id }}");
 
 let map, driverMarker, receiverMarker, routePolyline;
 
-// let socket = io(window.location.origin, {
-//     transports: ["websocket", "polling"]
-// });
-
-console.log("Connecting socket to:", window.location.origin);
 let socket = io(window.location.origin, {
     transports: ["websocket", "polling"]
 });
+
 
 let lastRouteCall = 0;
 const ROUTE_THROTTLE = 1300;
