@@ -142,9 +142,6 @@
 ============================================================ */
 
 
-socket.on("connect", () => console.log("Receiver socket connected:", socket.id));
-socket.on("connect_error", e => console.error("Receiver socket error:", e));
-socket.on("disconnect", () => console.log("Receiver socket disconnected"));
 
 
 let deliveryId = "{{ delivery_id }}";
@@ -155,6 +152,9 @@ let map, driverMarker, receiverMarker, routePolyline;
 let socket = io(window.location.origin, {
     transports: ["websocket", "polling"]
 });
+socket.on("connect", () => console.log("Receiver socket connected:", socket.id));
+socket.on("connect_error", e => console.error("Receiver socket error:", e));
+socket.on("disconnect", () => console.log("Receiver socket disconnected"));
 
 
 let lastRouteCall = 0;
