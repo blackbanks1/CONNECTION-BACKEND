@@ -188,7 +188,11 @@ function initMap(lat, lng) {
 ============================================================ */
 
 function joinRoom() {
-    socket.emit("join_delivery", { delivery_id: deliveryId });
+    socket.emit("join_delivery", {
+    delivery_id: deliveryId,
+    role: "receiver"
+});
+
 
     socket.on("driver_update", data => {
         if (!data.lat || !data.lng) return;
@@ -329,6 +333,7 @@ function openWhatsApp(phoneNumber, message) {
     const url = `https://wa.me/${normalized}?text=${encoded}`;
     window.location.href = url;
 }
+
 
 </script>
 
