@@ -176,6 +176,10 @@ def on_join_delivery(data):
             if not delivery or delivery.driver_id != driver.id:
                 emit("error", {"error": "not_your_delivery"})
                 return
+            
+
+            
+            print("Client joined:", role, "delivery_id:", delivery_id)
 
         join_room(str(delivery_id))
         emit("join_delivery", {"delivery_id": delivery_id, "role": role}, room=str(delivery_id))
@@ -211,6 +215,8 @@ def on_driver_update(data):
             "speed": data.get("speed"),
             "ts": datetime.utcnow().isoformat()
         }
+        print("DRIVER UPDATE RECEIVED FOR:", delivery_id)
+        print("Broadcasting to room:", str(delivery_id))
 
         emit("driver_update", payload, room=str(delivery_id), include_self=False)
 
