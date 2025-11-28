@@ -139,25 +139,79 @@
 /* ============================================================
    STATE
 ============================================================ */
+
 let deliveryId = "{{ delivery_id }}";
-console.log("RECEIVER deliveryId =", deliveryId);
+console.log("[Receiver] deliveryId =", deliveryId);
 
 let map, driverMarker, receiverMarker, routePolyline;
-
-let socket = io(window.location.origin, {
-    transports: ["websocket", "polling"]
-});
-
-socket.on("connect", () => console.log("Receiver socket connected:", socket.id));
-socket.on("connect_error", e => console.error("Receiver socket error:", e));
-socket.on("disconnect", () => console.log("Receiver socket disconnected"));
 
 let lastRouteCall = 0;
 const ROUTE_THROTTLE = 1300;
 
 /* ============================================================
+   SOCKET INIT  (must run before anything else)
+============================================================ */
+
+let socket;
+
+function initSocket() {
+    socket = io(window.location.origin, {
+        transports: ["websocket", "polling"]
+    });
+
+    socket.on("connect", () => {
+        console.log("[Receiver] Socket connected:", socket.id);
+        joinRoom();
+    });
+
+    socket.on("connect_error", (e) =>
+        console.error("[Receiver] socket error:", e)
+    );
+
+    socket.on("disconnect", () =>
+        console.log("[Receiver] socket disconnected")
+    );
+}
+
+initSocket();
+
+/* ============================================================
+   ROOM JOIN
+============================================================ */
+
+function joinRoom() {
+    console.log("[Receiver] Joining room:", deliveryId);
+
+    socket.emit("join_delivery", {
+        delivery_id: deliveryId,
+        role: "receiver"
+    });
+
+    socket.on("joined_room", (data) => {
+        console.log("[Receiver] Successfully joined:", data);
+    });
+
+    socket.on("driver_update", (data) => {
+        console.log("[Receiver] DRIVER UPDATE:", data);
+
+        if (!map) return;
+
+        if (!driverMarker) {
+            driverMarker = L.marker([data.lat, data.lng], {
+                title: "Driver"
+            }).addTo(map);
+        } else {
+            driverMarker.setLatLng([data.lat, data.lng]);
+        }
+
+        updateRoute();
+    });
+}
+
+/* ============================================================
    PERMISSION + MAP INIT
 ============================================================ */
+
 function requestLocation() {
     navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -168,7 +222,6 @@ function requestLocation() {
             card.classList.add("fade-in");
 
             initMap(pos.coords.latitude, pos.coords.longitude);
-            joinRoom();
             startReceiverTracking();
         },
         () => alert("Location is required for live updates."),
@@ -184,45 +237,28 @@ function initMap(lat, lng) {
     }).addTo(map);
 
     receiverMarker = L.marker([lat, lng], { title: "You" }).addTo(map);
-}
 
-/* ============================================================
-   SOCKET – DRIVER UPDATES
-============================================================ */
-function joinRoom() {
-    socket.emit("join_delivery", {
-        delivery_id: deliveryId,
-        role: "receiver"
-    });
-
-    socket.on("driver_update", data => {
-        if (!data.lat || !data.lng) return;
-
-        if (!driverMarker) {
-            driverMarker = L.marker([data.lat, data.lng], { title: "Driver" }).addTo(map);
-        } else {
-            driverMarker.setLatLng([data.lat, data.lng]);
-        }
-
-        updateRoute();
-    });
+    console.log("[Receiver] Map initialized");
 }
 
 /* ============================================================
    RECEIVER REALTIME GPS
 ============================================================ */
+
 function startReceiverTracking() {
     navigator.geolocation.watchPosition(
         (pos) => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
-            receiverMarker.setLatLng([lat, lng]);
+            if (receiverMarker) {
+                receiverMarker.setLatLng([lat, lng]);
+            }
 
             socket.emit("receiver_update", {
                 delivery_id: deliveryId,
-                lat: lat,
-                lng: lng
+                lat,
+                lng
             });
 
             updateRoute();
@@ -235,6 +271,7 @@ function startReceiverTracking() {
 /* ============================================================
    ROUTE CALCULATION
 ============================================================ */
+
 async function updateRoute() {
     if (!driverMarker || !receiverMarker) return;
 
@@ -262,7 +299,7 @@ async function updateRoute() {
         showStats(data.distance_km, data.eta_min);
 
     } catch (err) {
-        console.log("ROUTE ERROR:", err);
+        console.log("[Receiver] ROUTE ERROR:", err);
     }
 }
 
@@ -274,7 +311,6 @@ function drawRoute(poly) {
 
     if (routePolyline) {
         map.removeLayer(routePolyline);
-        routePolyline = null;
     }
 
     if (!poly || poly.length === 0) return;
@@ -297,32 +333,8 @@ function showStats(km, min) {
     box.style.display = "block";
     box.textContent = `${km.toFixed(2)} km • ${Math.round(min)} min`;
 }
-
-/* ============================================================
-   WHATSAPP HELPERS
-============================================================ */
-function normalizeRwandaNumber(num) {
-    if (!num) return null;
-    num = num.replace(/\D/g, "");
-
-    if (num.startsWith("07")) return "250" + num.slice(1);
-    if (num.startsWith("2507")) return num;
-    if (num.length === 9 && num.startsWith("7")) return "250" + num;
-
-    return num;
-}
-
-function openWhatsApp(phoneNumber, message) {
-    const normalized = normalizeRwandaNumber(phoneNumber);
-    if (!normalized) {
-        alert("WhatsApp number missing");
-        return;
-    }
-
-    const encoded = encodeURIComponent(message || "");
-    window.location.href = `https://wa.me/${normalized}?text=${encoded}`;
-}
 </script>
+
 
 </body>
 </html>
