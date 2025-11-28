@@ -212,7 +212,8 @@ def on_driver_update(data):
             "ts": datetime.utcnow().isoformat()
         }
 
-        emit("driver_update", payload, room=str(delivery_id))
+        emit("driver_update", payload, room=str(delivery_id), include_self=False)
+
 
 
 @socketio.on("receiver_update")
