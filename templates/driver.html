@@ -269,6 +269,34 @@ function showMapAfterSend(){
 }
 
 /* -------------- Map initialization -------------- */
+function smoothMoveMarker(marker, newLat, newLng, duration = 800) {
+    if (!marker) return;
+
+    const startPos = marker.getLatLng();
+    const endPos = L.latLng(newLat, newLng);
+
+    const startTime = performance.now();
+
+    function animate(t) {
+        const progress = Math.min((t - startTime) / duration, 1);
+
+        // Ease-out animation (smooth stop)
+        const eased = 1 - Math.pow(1 - progress, 3);
+
+        const currentLat = startPos.lat + (endPos.lat - startPos.lat) * eased;
+        const currentLng = startPos.lng + (endPos.lng - startPos.lng) * eased;
+
+        marker.setLatLng([currentLat, currentLng]);
+
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        }
+    }
+
+    requestAnimationFrame(animate);
+}
+
+
 function initMap() {
     if (map) return;
 
@@ -312,7 +340,8 @@ function drawPolyline(poly) {
     if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
 
     // fit map nicely
-    map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17 });
+   fitMapToActors();
+
 }
 
 
@@ -350,6 +379,26 @@ stats.innerText = `${formatKm(j.distance_km)} · ${formatMin(j.eta_min)}`;
         console.error("requestRoute error", err);
     }
 }
+
+
+function fitMapToActors() {
+    if (!map) return;
+
+    let bounds = L.latLngBounds([]);
+
+    if (driverMarker) bounds.extend(driverMarker.getLatLng());
+    if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
+    if (routePolyline) bounds.extend(routePolyline.getBounds());
+
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+            padding: [80, 80],
+            maxZoom: 17,
+            animate: true
+        });
+    }
+}
+
 
 /* -------------- GPS watch - driver position -------------- */
 function startGPS() {
@@ -433,35 +482,66 @@ socket.on("connect", () => {
 });
 
 
-socket.on("driver_update", data => {
-    if (!data || !data.lat || !data.lng) return;
-    if (!driverMarker && map) {
-        driverMarker = L.marker([data.lat, data.lng]).addTo(map);
-    } else if (driverMarker) {
-        driverMarker.setLatLng([data.lat, data.lng]);
-    }
-});
-
-socket.on("receiver_update", data => {
+socket.on("driver_update", (data) => {
     if (!data || data.lat === undefined || data.lng === undefined) return;
+
     const lat = parseFloat(data.lat);
     const lng = parseFloat(data.lng);
 
-    if (!receiverMarker && map) {
-        receiverMarker = L.marker([lat, lng]).addTo(map);
-    } else if (receiverMarker) {
-        receiverMarker.setLatLng([lat, lng]);
+    if (!driverMarker && map) {
+        driverMarker = L.marker([lat, lng], { title: "Driver" }).addTo(map);
+    } else if (driverMarker) {
+        smoothMoveMarker(driverMarker, lat, lng);
     }
 
-    // if driver exists, request route
+    // update route
+    if (receiverMarker) {
+        const rpos = receiverMarker.getLatLng();
+        requestRoute(
+            { lat, lng },
+            { lat: rpos.lat, lng: rpos.lng }
+        );
+    }
+
+    fitMapToActors();
+});
+
+
+
+socket.on("receiver_update", (data) => {
+    if (!data || data.lat === undefined || data.lng === undefined) return;
+
+    const lat = parseFloat(data.lat);
+    const lng = parseFloat(data.lng);
+
+    // --- Create marker on first update ---
+    if (!receiverMarker && map) {
+        receiverMarker = L.marker([lat, lng], { title: "You" }).addTo(map);
+    } 
+    
+    // --- Smooth movement after that ---
+    else if (receiverMarker) {
+        smoothMoveMarker(receiverMarker, lat, lng);
+    }
+
+    // --- If driver exists, request route ---
     if (driverMarker) {
         const dpos = driverMarker.getLatLng();
-        requestRoute({ lat: dpos.lat, lng: dpos.lng }, { lat, lng });
-    } else if (map) {
-        // center on receiver until driver appears
+        requestRoute(
+            { lat: dpos.lat, lng: dpos.lng },
+            { lat, lng }
+        );
+    }
+
+    // --- If driver not yet connected, follow the receiver only ---
+    else if (map) {
         map.setView([lat, lng], 14);
     }
+
+    // --- Auto zoom on both actors ---
+    fitMapToActors();
 });
+
 
 /* -------------- Utility: join room when createSession wraps -------------- */
 (function wrapCreateSession() {
