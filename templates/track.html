@@ -5,6 +5,7 @@
     <title>Connection – Track Delivery</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
     <style>
@@ -14,7 +15,6 @@
             background: #f3f4f6;
         }
 
-        /* HEADER (matches driver.html) */
         .header {
             padding: 12px;
             background: white;
@@ -34,32 +34,29 @@
             color: #333;
         }
 
-       /* MAP CARD CONTAINER */
-.map-card {
-    margin: 14px auto;
-    width: 92%;
-    max-width: 900px;
-    height: 70vh;            /* NOT full screen */
-    background: white;
-    border-radius: 18px;
-    overflow: hidden;        /* round corners affect map */
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    display: none;
-    opacity: 0;
-    transition: opacity 0.6s ease;
-}
+        .map-card {
+            margin: 14px auto;
+            width: 92%;
+            max-width: 900px;
+            height: 70vh;
+            background: white;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            display: none;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
 
-/* The Leaflet map inside */
-#map {
-    width: 100%;
-    height: 100%;
-}
-.fade-in {
-    opacity: 1 !important;
-}
+        #map {
+            width: 100%;
+            height: 100%;
+        }
 
+        .fade-in {
+            opacity: 1 !important;
+        }
 
-        /* Small permission card */
         .permission-box {
             margin: 40px auto;
             padding: 22px;
@@ -91,7 +88,6 @@
             font-weight: 600;
         }
 
-        /* Bottom floating stats */
         .stats-box {
             position: fixed;
             bottom: 18px;
@@ -108,6 +104,7 @@
         }
     </style>
 
+    <!-- Load libraries FIRST -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
@@ -120,42 +117,40 @@
     <div class="title">Connection – Live Tracking</div>
 </div>
 
-<!-- Location Permission -->
+<!-- Location Permission Box -->
 <div id="permBox" class="permission-box">
     <div class="permission-title">Location Required</div>
     <p>We need your location to calculate real-time distance and ETA.</p>
     <button class="btn" onclick="requestLocation()">Allow Location</button>
 </div>
 
-<!-- MAP -->
+<!-- Map container -->
 <div id="mapCard" class="map-card">
     <div id="map"></div>
 </div>
 
-
-<!-- ETA + Distance -->
+<!-- Realtime stats -->
 <div id="stats" class="stats-box"></div>
 
+<!-- ============================================================
+     RECEIVER JAVASCRIPT — MOVED TO THE BOTTOM (FIX)
+============================================================ -->
 <script>
 /* ============================================================
    STATE
 ============================================================ */
-
-
-
-
 let deliveryId = "{{ delivery_id }}";
-console.log("RECEIVER deliveryId =", "{{ delivery_id }}");
+console.log("RECEIVER deliveryId =", deliveryId);
 
 let map, driverMarker, receiverMarker, routePolyline;
 
 let socket = io(window.location.origin, {
     transports: ["websocket", "polling"]
 });
+
 socket.on("connect", () => console.log("Receiver socket connected:", socket.id));
 socket.on("connect_error", e => console.error("Receiver socket error:", e));
 socket.on("disconnect", () => console.log("Receiver socket disconnected"));
-
 
 let lastRouteCall = 0;
 const ROUTE_THROTTLE = 1300;
@@ -163,17 +158,14 @@ const ROUTE_THROTTLE = 1300;
 /* ============================================================
    PERMISSION + MAP INIT
 ============================================================ */
-
 function requestLocation() {
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             document.getElementById("permBox").style.display = "none";
 
-
-        const card = document.getElementById("mapCard");
-        card.style.display = "block";
-        card.classList.add("fade-in");
-
+            const card = document.getElementById("mapCard");
+            card.style.display = "block";
+            card.classList.add("fade-in");
 
             initMap(pos.coords.latitude, pos.coords.longitude);
             joinRoom();
@@ -197,13 +189,11 @@ function initMap(lat, lng) {
 /* ============================================================
    SOCKET – DRIVER UPDATES
 ============================================================ */
-
 function joinRoom() {
     socket.emit("join_delivery", {
-    delivery_id: deliveryId,
-    role: "receiver"
-});
-
+        delivery_id: deliveryId,
+        role: "receiver"
+    });
 
     socket.on("driver_update", data => {
         if (!data.lat || !data.lng) return;
@@ -221,7 +211,6 @@ function joinRoom() {
 /* ============================================================
    RECEIVER REALTIME GPS
 ============================================================ */
-
 function startReceiverTracking() {
     navigator.geolocation.watchPosition(
         (pos) => {
@@ -246,7 +235,6 @@ function startReceiverTracking() {
 /* ============================================================
    ROUTE CALCULATION
 ============================================================ */
-
 async function updateRoute() {
     if (!driverMarker || !receiverMarker) return;
 
@@ -281,17 +269,14 @@ async function updateRoute() {
 function drawRoute(poly) {
     if (!map) return;
 
-    // if map is hidden
     const card = document.getElementById("mapCard");
     if (card.style.display === "none") return;
 
-    // remove old route
     if (routePolyline) {
         map.removeLayer(routePolyline);
         routePolyline = null;
     }
 
-    // nothing to draw
     if (!poly || poly.length === 0) return;
 
     routePolyline = L.polyline(poly, {
@@ -300,7 +285,6 @@ function drawRoute(poly) {
         opacity: 0.95
     }).addTo(map);
 
-    // include markers in bounds
     let bounds = routePolyline.getBounds();
     if (driverMarker) bounds.extend(driverMarker.getLatLng());
     if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
@@ -308,44 +292,36 @@ function drawRoute(poly) {
     map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17 });
 }
 
-
 function showStats(km, min) {
     const box = document.getElementById("stats");
     box.style.display = "block";
     box.textContent = `${km.toFixed(2)} km • ${Math.round(min)} min`;
 }
 
-
+/* ============================================================
+   WHATSAPP HELPERS
+============================================================ */
 function normalizeRwandaNumber(num) {
     if (!num) return null;
     num = num.replace(/\D/g, "");
 
-    if (num.startsWith("07")) {
-        return "250" + num.slice(1);
-    }
-    if (num.startsWith("2507")) {
-        return num;
-    }
-    if (num.length === 9 && num.startsWith("7")) {
-        return "250" + num;
-    }
+    if (num.startsWith("07")) return "250" + num.slice(1);
+    if (num.startsWith("2507")) return num;
+    if (num.length === 9 && num.startsWith("7")) return "250" + num;
+
     return num;
 }
 
 function openWhatsApp(phoneNumber, message) {
     const normalized = normalizeRwandaNumber(phoneNumber);
-
     if (!normalized) {
         alert("WhatsApp number missing");
         return;
     }
 
     const encoded = encodeURIComponent(message || "");
-    const url = `https://wa.me/${normalized}?text=${encoded}`;
-    window.location.href = url;
+    window.location.href = `https://wa.me/${normalized}?text=${encoded}`;
 }
-
-
 </script>
 
 </body>
