@@ -407,61 +407,57 @@ function startGPS() {
         return;
     }
 
-    navigator.geolocation.watchPosition(
-        pos => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            const speed = pos.coords.speed || 0;
+   /* ---------------- Smooth driver movement in GPS watch ---------------- */
+navigator.geolocation.watchPosition(
+    pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const speed = pos.coords.speed || 0;
 
-            const dpos = { lat, lng };
+        // --- driver marker (mobile-safe) ---
+        if (!driverMarker) {
+            driverMarker = L.marker([lat, lng], {
+                icon: L.icon({
+                    iconUrl: "/static/driver.png",
+                    iconSize: [20, 20]
+                })
+            }).addTo(map);
 
-            // --- driver marker (mobile-safe) ---
-            if (!driverMarker) {
-                driverMarker = L.marker([lat, lng], {
-                    icon: L.icon({
-                        iconUrl: "/static/driver.png",
-                        iconSize: [20, 20]
-                    })
-                }).addTo(map);
-
-                // center on driver first time
-                map.setView([lat, lng], 16);
-            } else {
-                driverMarker.setLatLng([lat, lng]);
-            }
-
-            // --- send update to backend ---
-            if (window.deliveryId) {
-                socket.emit("driver_update", {
-                    delivery_id: window.deliveryId,
-                    lat,
-                    lng,
-                    speed
-                });
-            }
-
-            // --- re-draw route if receiver exists ---
-            if (receiverMarker) {
-                const rpos = receiverMarker.getLatLng();
-                requestRoute(
-                    { lat, lng },
-                    { lat: rpos.lat, lng: rpos.lng }
-                );
-            }
-        },
-
-        // GPS permission error handler
-        err => {
-            console.warn("GPS failed:", err);
-        },
-
-        // Best mobile accuracy
-        {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 10000
+            // center on driver first time
+            map.setView([lat, lng], 16);
+        } else {
+            // smooth move instead of instant setLatLng
+            smoothMoveMarker(driverMarker, lat, lng);
         }
-    );
+
+        // --- send update to backend ---
+        if (window.deliveryId) {
+            socket.emit("driver_update", {
+                delivery_id: window.deliveryId,
+                lat,
+                lng,
+                speed
+            });
+        }
+
+        // --- re-draw route if receiver exists ---
+        if (receiverMarker) {
+            const rpos = receiverMarker.getLatLng();
+            requestRoute(
+                { lat, lng },
+                { lat: rpos.lat, lng: rpos.lng }
+            );
+        }
+
+        // --- auto-fit map on both markers ---
+        fitMapToActors();
+    },
+    err => {
+        console.warn("GPS failed:", err);
+    },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+);
+
 }
 
 

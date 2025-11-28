@@ -149,7 +149,7 @@ let lastRouteCall = 0;
 const ROUTE_THROTTLE = 1300;
 
 /* ============================================================
-   SOCKET INIT  (must run before anything else)
+   SOCKET INIT
 ============================================================ */
 
 let socket;
@@ -191,25 +191,51 @@ function joinRoom() {
         console.log("[Receiver] Successfully joined:", data);
     });
 
+    // DRIVER UPDATES
     socket.on("driver_update", (data) => {
-        console.log("[Receiver] DRIVER UPDATE:", data);
-
-        if (!map) return;
+        if (!map || !data || data.lat === undefined || data.lng === undefined) return;
+        const lat = parseFloat(data.lat);
+        const lng = parseFloat(data.lng);
 
         if (!driverMarker) {
-            driverMarker = L.marker([data.lat, data.lng], {
-                title: "Driver"
-            }).addTo(map);
+            driverMarker = L.marker([lat, lng], { title: "Driver" }).addTo(map);
         } else {
-            driverMarker.setLatLng([data.lat, data.lng]);
+            moveMarkerSmooth(driverMarker, { lat, lng }, 800);
         }
 
-        updateRoute();
+        // Update route if receiver exists
+        if (receiverMarker) {
+            const rPos = receiverMarker.getLatLng();
+            requestRoute({ lat, lng }, { lat: rPos.lat, lng: rPos.lng });
+            fitMapToMarkers();
+        }
+    });
+
+    // RECEIVER UPDATES (if another device is also tracking)
+    socket.on("receiver_update", (data) => {
+        if (!data || data.lat === undefined || data.lng === undefined) return;
+        const lat = parseFloat(data.lat);
+        const lng = parseFloat(data.lng);
+
+        if (!receiverMarker && map) {
+            receiverMarker = L.marker([lat, lng], { title: "You" }).addTo(map);
+        } else if (receiverMarker) {
+            moveMarkerSmooth(receiverMarker, { lat, lng }, 800);
+        }
+
+        // Update route if driver exists
+        if (driverMarker) {
+            const dPos = driverMarker.getLatLng();
+            requestRoute({ lat: dPos.lat, lng: dPos.lng }, { lat, lng });
+            fitMapToMarkers();
+        } else if (map) {
+            map.flyTo([lat, lng], 14);
+        }
     });
 }
 
 /* ============================================================
-   PERMISSION + MAP INIT
+   MAP INIT & PERMISSION
 ============================================================ */
 
 function requestLocation() {
@@ -242,6 +268,40 @@ function initMap(lat, lng) {
 }
 
 /* ============================================================
+   SMOOTH MARKER ANIMATION
+============================================================ */
+
+function moveMarkerSmooth(marker, newLatLng, duration = 500) {
+    if (!marker) return;
+    const start = marker.getLatLng();
+    const end = L.latLng(newLatLng.lat, newLatLng.lng);
+    const startTime = performance.now();
+
+    function animate(time) {
+        const progress = Math.min((time - startTime) / duration, 1);
+        const lat = start.lat + (end.lat - start.lat) * progress;
+        const lng = start.lng + (end.lng - start.lng) * progress;
+        marker.setLatLng([lat, lng]);
+        if (progress < 1) requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+}
+
+/* ============================================================
+   FIT MAP TO BOTH MARKERS
+============================================================ */
+
+function fitMapToMarkers() {
+    if (!map) return;
+    const bounds = L.latLngBounds([]);
+    if (driverMarker) bounds.extend(driverMarker.getLatLng());
+    if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
+    if (bounds.isValid()) {
+        map.flyToBounds(bounds, { padding: [80, 80], maxZoom: 17 });
+    }
+}
+
+/* ============================================================
    RECEIVER REALTIME GPS
 ============================================================ */
 
@@ -252,7 +312,7 @@ function startReceiverTracking() {
             const lng = pos.coords.longitude;
 
             if (receiverMarker) {
-                receiverMarker.setLatLng([lat, lng]);
+                moveMarkerSmooth(receiverMarker, { lat, lng }, 800);
             }
 
             socket.emit("receiver_update", {
@@ -261,79 +321,18 @@ function startReceiverTracking() {
                 lng
             });
 
-            updateRoute();
+            if (driverMarker) {
+                const dPos = driverMarker.getLatLng();
+                requestRoute({ lat: dPos.lat, lng: dPos.lng }, { lat, lng });
+                fitMapToMarkers();
+            }
         },
         () => {},
         { enableHighAccuracy: true }
     );
 }
-
-/* ============================================================
-   ROUTE CALCULATION
-============================================================ */
-
-async function updateRoute() {
-    if (!driverMarker || !receiverMarker) return;
-
-    const now = Date.now();
-    if (now - lastRouteCall < ROUTE_THROTTLE) return;
-    lastRouteCall = now;
-
-    const start = driverMarker.getLatLng();
-    const end = receiverMarker.getLatLng();
-
-    try {
-        const res = await fetch("/api/route", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                start: { lat: start.lat, lng: start.lng },
-                end: { lat: end.lat, lng: end.lng }
-            })
-        });
-
-        const data = await res.json();
-        if (!res.ok) return;
-
-        drawRoute(data.polyline);
-        showStats(data.distance_km, data.eta_min);
-
-    } catch (err) {
-        console.log("[Receiver] ROUTE ERROR:", err);
-    }
-}
-
-function drawRoute(poly) {
-    if (!map) return;
-
-    const card = document.getElementById("mapCard");
-    if (card.style.display === "none") return;
-
-    if (routePolyline) {
-        map.removeLayer(routePolyline);
-    }
-
-    if (!poly || poly.length === 0) return;
-
-    routePolyline = L.polyline(poly, {
-        color: "#0077ff",
-        weight: 5,
-        opacity: 0.95
-    }).addTo(map);
-
-    let bounds = routePolyline.getBounds();
-    if (driverMarker) bounds.extend(driverMarker.getLatLng());
-    if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
-
-    map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17 });
-}
-
-function showStats(km, min) {
-    const box = document.getElementById("stats");
-    box.style.display = "block";
-    box.textContent = `${km.toFixed(2)} km • ${Math.round(min)} min`;
-}
 </script>
+
 
 
 </body>
