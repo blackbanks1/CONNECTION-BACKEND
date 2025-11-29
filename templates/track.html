@@ -102,6 +102,19 @@
             display: none;
             z-index: 9999;
         }
+        #stats {
+    position: absolute;
+    top: 10px;       /* distance from top of map */
+    left: 10px;      /* distance from left */
+    background: rgba(255, 255, 255, 0.9);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #0077ff;
+    z-index: 1000;   /* make sure it’s above map layers */
+}
+
     </style>
 
     <!-- Load libraries FIRST -->
@@ -127,10 +140,11 @@
 <!-- Map container -->
 <div id="mapCard" class="map-card">
     <div id="map"></div>
+    <div id="stats" class="stats-box"></div>
 </div>
 
 <!-- Realtime stats -->
-<div id="stats" class="stats-box"></div>
+
 
 <!-- ============================================================
      RECEIVER JAVASCRIPT — MOVED TO THE BOTTOM (FIX)
