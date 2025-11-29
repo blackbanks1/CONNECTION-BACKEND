@@ -174,20 +174,34 @@ function initSocket() {
 
 initSocket();
 
+// --- When receiving driver updates ---
 socket.on("driver_update", (data) => {
-        if (!map || !data || data.lat === undefined || data.lng === undefined) return;
-        const lat = parseFloat(data.lat);
-        const lng = parseFloat(data.lng);
+    if (!data || data.lat === undefined || data.lng === undefined) return;
 
-        if (!driverMarker) driverMarker = L.marker([lat, lng], { title: "Driver" }).addTo(map);
-        else moveMarkerSmooth(driverMarker, { lat, lng }, 800);
+    const lat = parseFloat(data.lat);
+    const lng = parseFloat(data.lng);
 
-        if (receiverMarker) {
-            const rPos = receiverMarker.getLatLng();
-            requestRoute({ lat, lng }, { lat: rPos.lat, lng: rPos.lng });
-            fitMapToMarkers();
-        }
-    });
+    if (!driverMarker && map) {
+        // Create a custom icon for the driver
+        const driverIcon = L.icon({
+            iconUrl: "/static/driver.png", // your driver icon
+            iconSize: [25, 25],            // size of the icon
+            iconAnchor: [12, 12],          // point of the icon which will correspond to marker's location
+            popupAnchor: [0, -10]
+        });
+
+        driverMarker = L.marker([lat, lng], { title: "Driver", icon: driverIcon }).addTo(map);
+    } else if (driverMarker) {
+        moveMarkerSmooth(driverMarker, { lat, lng }, 800);
+    }
+
+    // Update route and map bounds
+    if (receiverMarker) {
+        const rPos = receiverMarker.getLatLng();
+        requestRoute({ lat, lng }, { lat: rPos.lat, lng: rPos.lng });
+        fitMapToMarkers();
+    }
+});
         
     // Receiver updates (other devices tracking same delivery)
     socket.on("receiver_update", (data) => {
@@ -295,6 +309,7 @@ function fitMapToMarkers() {
 /* ===========================
    ROUTE REQUEST
 =========================== */
+
 async function requestRoute(start, end) {
     if (!start || !end) return;
     const now = Date.now();
@@ -313,6 +328,13 @@ async function requestRoute(start, end) {
         // draw fallback straight line
         if (routePolyline) { map.removeLayer(routePolyline); }
         routePolyline = L.polyline([[start.lat, start.lng], [end.lat, end.lng]], { color: "#0077ff", weight: 5 }).addTo(map);
+
+        // --- Show distance and ETA ---
+        const stats = document.getElementById("stats");
+        if (stats) {
+            stats.style.display = "block";
+            stats.innerText = `${formatKm(j.distance_km)} · ${formatMin(j.eta_min)}`;
+        }
 
     } catch (err) {
         console.error("requestRoute error", err);

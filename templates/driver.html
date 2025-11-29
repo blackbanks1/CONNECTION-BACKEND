@@ -79,7 +79,13 @@
             position: relative;
             min-height: 420px;
         }
-        #map { width:100%; height:72vh; border-radius:8px; display:none; }
+        #map { 
+    width: 100%;          
+    height: 60vh;         
+    min-height: 300px;    
+    transition: opacity 0.45s, transform 0.45s;
+}
+ 
 
         /* Fade-in class */
         .fade-in { animation: fadeIn 0.5s ease forwards; }
@@ -261,10 +267,11 @@ function sendWhatsApp() {
     }, 2200);
 }
 
-function showMapAfterSend(){
+function showMapAfterSend() {
     if (hasShownMap) return;
     hasShownMap = true;
 
+    // Fade out left panel
     const left = document.querySelector(".col-left");
     left.style.transition = "opacity .45s, transform .45s";
     left.style.opacity = 0;
@@ -272,13 +279,30 @@ function showMapAfterSend(){
 
     setTimeout(() => {
         left.style.display = "none";
-        const m = document.getElementById("map");
-        m.style.display = "block";
-        m.classList.add("fade-in");
+
+        // Show map container
+        const mapDiv = document.getElementById("map");
+        mapDiv.style.display = "block";
+        mapDiv.classList.add("fade-in");
+
+        // Initialize map if not already
         initMap();
+
+        // ⚡ Responsiveness: recompute map size
+        if (map) {
+            map.invalidateSize();      // Force Leaflet to resize properly
+            fitMapToActors();          // Fit driver/receiver markers
+        }
+
+        
         startGPS();
     }, 480);
 }
+
+window.addEventListener("resize", () => {
+    if (map) map.invalidateSize();
+});
+
 
 /* -------------- Map initialization -------------- */
 function initMap() {
