@@ -144,6 +144,7 @@
 let deliveryId = "{{ delivery_id }}";  // Replace with backend variable
 console.log("[Receiver] deliveryId =", deliveryId);
 
+
 let map = null;
 let driverMarker = null;
 let receiverMarker = null;
@@ -245,8 +246,17 @@ function requestLocation() {
 
 function initMap(lat, lng) {
     map = L.map("map").setView([lat, lng], 15);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19
+    }).addTo(map);
+
+    // Always create receiver marker immediately
     receiverMarker = L.marker([lat, lng], { title: "You" }).addTo(map);
+
+    // If driverMarker already exists (from socket), include in bounds
+    fitMapToMarkers();
+
     console.log("[Receiver] Map initialized");
 }
 
