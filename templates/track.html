@@ -312,6 +312,7 @@ function fitMapToMarkers() {
 
 async function requestRoute(start, end) {
     if (!start || !end) return;
+
     const now = Date.now();
     if (now - lastRouteCall < ROUTE_THROTTLE_MS) return;
     lastRouteCall = now;
@@ -322,22 +323,40 @@ async function requestRoute(start, end) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ start, end })
         });
+
         const j = await res.json();
-        if (!res.ok) return;
+        console.log("Route API response:", j); // Debug: check fields
 
-        // draw fallback straight line
-        if (routePolyline) { map.removeLayer(routePolyline); }
-        routePolyline = L.polyline([[start.lat, start.lng], [end.lat, end.lng]], { color: "#0077ff", weight: 5 }).addTo(map);
+        if (!res.ok) {
+            console.warn("Route API returned error:", j);
+            return;
+        }
 
-        // --- Show distance and ETA ---
+        // Remove old polyline if exists
+        if (routePolyline) {
+            map.removeLayer(routePolyline);
+            routePolyline = null;
+        }
+
+        // Draw fallback straight line if API doesn't return coordinates
+        routePolyline = L.polyline(
+            [[start.lat, start.lng], [end.lat, end.lng]],
+            { color: "#0077ff", weight: 5, opacity: 0.95 }
+        ).addTo(map);
+
+        // Show distance and ETA safely
         const stats = document.getElementById("stats");
         if (stats) {
+            // Convert API values if needed
+            const distanceKm = j.distance_km ?? (j.distance ? j.distance / 1000 : 0);
+            const etaMin = j.eta_min ?? (j.duration ? j.duration / 60 : 0);
+
             stats.style.display = "block";
-            stats.innerText = `${formatKm(j.distance_km)} · ${formatMin(j.eta_min)}`;
+            stats.innerText = `${formatKm(distanceKm)} · ${formatMin(etaMin)}`;
         }
 
     } catch (err) {
-        console.error("requestRoute error", err);
+        console.error("requestRoute error:", err);
     }
 }
 
