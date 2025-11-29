@@ -110,7 +110,7 @@ class User(db.Model):
     # -------------------------
     def start_trial(self):
         """Start a 7-day free trial for new users."""
-        self.trial_end_date = datetime.utcnow() + timedelta(days=14)
+        self.trial_end_date = datetime.utcnow() + timedelta(days=30)
 
     def trial_active(self):
         """Returns True if user is still within free trial."""
