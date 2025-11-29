@@ -144,7 +144,6 @@ let deliveryId = "{{ delivery_id }}";
 console.log("[Receiver] deliveryId =", deliveryId);
 
 let map, driverMarker, receiverMarker, routePolyline;
-
 let lastRouteCall = 0;
 const ROUTE_THROTTLE = 1300;
 
@@ -191,7 +190,6 @@ function joinRoom() {
         console.log("[Receiver] Successfully joined:", data);
     });
 
-    // DRIVER UPDATES
     socket.on("driver_update", (data) => {
         if (!map || !data || data.lat === undefined || data.lng === undefined) return;
         const lat = parseFloat(data.lat);
@@ -203,7 +201,6 @@ function joinRoom() {
             moveMarkerSmooth(driverMarker, { lat, lng }, 800);
         }
 
-        // Update route if receiver exists
         if (receiverMarker) {
             const rPos = receiverMarker.getLatLng();
             requestRoute({ lat, lng }, { lat: rPos.lat, lng: rPos.lng });
@@ -211,7 +208,6 @@ function joinRoom() {
         }
     });
 
-    // RECEIVER UPDATES (if another device is also tracking)
     socket.on("receiver_update", (data) => {
         if (!data || data.lat === undefined || data.lng === undefined) return;
         const lat = parseFloat(data.lat);
@@ -223,7 +219,6 @@ function joinRoom() {
             moveMarkerSmooth(receiverMarker, { lat, lng }, 800);
         }
 
-        // Update route if driver exists
         if (driverMarker) {
             const dPos = driverMarker.getLatLng();
             requestRoute({ lat: dPos.lat, lng: dPos.lng }, { lat, lng });
@@ -242,7 +237,6 @@ function requestLocation() {
     navigator.geolocation.getCurrentPosition(
         (pos) => {
             document.getElementById("permBox").style.display = "none";
-
             const card = document.getElementById("mapCard");
             card.style.display = "block";
             card.classList.add("fade-in");
@@ -256,6 +250,8 @@ function requestLocation() {
 }
 
 function initMap(lat, lng) {
+    if (map) return; // Prevent "already initialized" errors
+
     map = L.map("map").setView([lat, lng], 15);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -279,8 +275,9 @@ function moveMarkerSmooth(marker, newLatLng, duration = 500) {
 
     function animate(time) {
         const progress = Math.min((time - startTime) / duration, 1);
-        const lat = start.lat + (end.lat - start.lat) * progress;
-        const lng = start.lng + (end.lng - start.lng) * progress;
+        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        const lat = start.lat + (end.lat - start.lat) * eased;
+        const lng = start.lng + (end.lng - start.lng) * eased;
         marker.setLatLng([lat, lng]);
         if (progress < 1) requestAnimationFrame(animate);
     }
@@ -296,9 +293,56 @@ function fitMapToMarkers() {
     const bounds = L.latLngBounds([]);
     if (driverMarker) bounds.extend(driverMarker.getLatLng());
     if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
+    if (routePolyline) bounds.extend(routePolyline.getBounds());
     if (bounds.isValid()) {
-        map.flyToBounds(bounds, { padding: [80, 80], maxZoom: 17 });
+        map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17, animate: true });
     }
+}
+
+/* ============================================================
+   ROUTE REQUEST
+============================================================ */
+
+async function requestRoute(start, end) {
+    if (!start || !end) return;
+    const now = Date.now();
+    if (now - lastRouteCall < ROUTE_THROTTLE) return;
+    lastRouteCall = now;
+
+    try {
+        const res = await fetch("/api/route", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start, end })
+        });
+        const data = await res.json();
+        if (!res.ok) return;
+
+        drawRoute(data.polyline);
+        showStats(data.distance_km, data.eta_min);
+    } catch (err) {
+        console.error("[Receiver] requestRoute error:", err);
+    }
+}
+
+function drawRoute(poly) {
+    if (!map) return;
+    if (routePolyline) map.removeLayer(routePolyline);
+    if (!poly || poly.length === 0) return;
+
+    routePolyline = L.polyline(poly, {
+        color: "#0077ff",
+        weight: 5,
+        opacity: 0.95
+    }).addTo(map);
+
+    fitMapToMarkers();
+}
+
+function showStats(km, min) {
+    const box = document.getElementById("stats");
+    box.style.display = "block";
+    box.textContent = `${km.toFixed(2)} km • ${Math.round(min)} min`;
 }
 
 /* ============================================================
@@ -311,15 +355,9 @@ function startReceiverTracking() {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
 
-            if (receiverMarker) {
-                moveMarkerSmooth(receiverMarker, { lat, lng }, 800);
-            }
+            if (receiverMarker) moveMarkerSmooth(receiverMarker, { lat, lng }, 800);
 
-            socket.emit("receiver_update", {
-                delivery_id: deliveryId,
-                lat,
-                lng
-            });
+            socket.emit("receiver_update", { delivery_id: deliveryId, lat, lng });
 
             if (driverMarker) {
                 const dPos = driverMarker.getLatLng();

@@ -153,46 +153,156 @@
 const socket = io("https://connection-backend-bdob.onrender.com", {
     transports: ["websocket", "polling"],
     upgrade: true,
-    reconnection: true,
+    reconnection: true
 });
-
-
 
 let map = null;
 let driverMarker = null;
 let receiverMarker = null;
 let routePolyline = null;
+
 let gpsStarted = false;
-
-
-let delivery_id = null;
 let hasShownMap = false;
 let awaitingWhatsApp = false;
+
+let delivery_id = null;
+window.deliveryId = null;
 
 let lastRouteCall = 0;
 const ROUTE_THROTTLE_MS = 1200; // throttle route requests
 
-/* -------------- Utilities -------------- */
-function cleanPhone(raw) {
-    if (!raw) return "";
-    let cleaned = raw.replace(/\D+/g, "");
-    if (cleaned.startsWith("0")) cleaned = "250" + cleaned.slice(1);
-    return cleaned;
-}
-
+/* ---------------- Utilities ---------------- */
 function formatKm(km) {
     return (km || 0).toFixed(2) + " km";
 }
+
 function formatMin(min) {
     if (min === undefined || min === null) return "- min";
     return Math.round(min) + " min";
 }
 
-/* -------------- Create session -------------- */
+function smoothMoveMarker(marker, newPos, duration = 800) {
+    if (!marker) return;
+    const startPos = marker.getLatLng();
+    const endPos = L.latLng(newPos.lat, newPos.lng);
+    const startTime = performance.now();
+
+    function animate(t) {
+        const progress = Math.min((t - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const currentLat = startPos.lat + (endPos.lat - startPos.lat) * eased;
+        const currentLng = startPos.lng + (endPos.lng - startPos.lng) * eased;
+        marker.setLatLng([currentLat, currentLng]);
+        if (progress < 1) requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+}
+
+function fitMapToActors() {
+    if (!map) return;
+    const bounds = L.latLngBounds([]);
+    if (driverMarker) bounds.extend(driverMarker.getLatLng());
+    if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
+    if (routePolyline) bounds.extend(routePolyline.getBounds());
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17, animate: true });
+    }
+}
+
+/* ---------------- Map & GPS ---------------- */
+function initMap() {
+    if (map) return;
+    map = L.map("map", { zoomControl: false }).setView([-1.94995, 30.0588], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    if (window.innerWidth > 700) L.control.zoom({ position: "topright" }).addTo(map);
+}
+
+function startGPS() {
+    if (!navigator.geolocation) {
+        alert("Your device does not support GPS.");
+        return;
+    }
+
+    navigator.geolocation.watchPosition(
+        pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const speed = pos.coords.speed || 0;
+
+            if (!driverMarker) {
+                driverMarker = L.marker([lat, lng], {
+                    icon: L.icon({ iconUrl: "/static/driver.png", iconSize: [20, 20] })
+                }).addTo(map);
+                map.setView([lat, lng], 16);
+            } else {
+                smoothMoveMarker(driverMarker, { lat, lng });
+            }
+
+            // Emit to backend
+            if (window.deliveryId) {
+                socket.emit("driver_update", { delivery_id: window.deliveryId, lat, lng, speed });
+            }
+
+            // Update route if receiver exists
+            if (receiverMarker) {
+                const rPos = receiverMarker.getLatLng();
+                requestRoute({ lat, lng }, { lat: rPos.lat, lng: rPos.lng });
+                fitMapToActors();
+            }
+        },
+        err => console.warn("GPS failed:", err),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
+}
+
+/* ---------------- Route & Polyline ---------------- */
+async function requestRoute(start, end) {
+    if (!start || !end) return;
+    const now = Date.now();
+    if (now - lastRouteCall < ROUTE_THROTTLE_MS) return;
+    lastRouteCall = now;
+
+    try {
+        const res = await fetch("/api/route", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ start, end })
+        });
+        const data = await res.json();
+        if (!res.ok) return;
+
+        // fallback straight line
+        drawPolyline([
+            [start.lat, start.lng],
+            [end.lat, end.lng]
+        ]);
+
+        const stats = document.getElementById("stats");
+        stats.style.display = "block";
+        stats.innerText = `${formatKm(data.distance_km)} · ${formatMin(data.eta_min)}`;
+    } catch (err) {
+        console.error("requestRoute error", err);
+    }
+}
+
+function drawPolyline(poly) {
+    if (!map) return;
+    if (!poly || poly.length === 0) return;
+
+    if (routePolyline) {
+        map.removeLayer(routePolyline);
+        routePolyline = null;
+    }
+
+    routePolyline = L.polyline(poly, { color: "#0077ff", weight: 5, opacity: 0.95 }).addTo(map);
+    fitMapToActors();
+}
+
+/* ---------------- Session & WhatsApp ---------------- */
 async function createSession() {
     const phone = document.getElementById("receiver_phone").value.trim();
     if (!phone) return alert("Please enter receiver phone");
-
     document.getElementById("create_btn").disabled = true;
 
     try {
@@ -209,16 +319,16 @@ async function createSession() {
         }
 
         delivery_id = data.delivery_id;
+        window.deliveryId = delivery_id; // ✅ unify usage
+
         const linkElem = document.getElementById("tracking_link");
         linkElem.href = data.tracking_link;
         linkElem.textContent = data.tracking_link;
         document.getElementById("tracking_box").style.display = "block";
 
-        // join socket room as driver (if connected)
         if (socket && socket.connected) {
             socket.emit("join_delivery", { delivery_id, role: "driver" });
         }
-
     } catch (err) {
         console.error(err);
         alert("Network error");
@@ -227,31 +337,24 @@ async function createSession() {
     }
 }
 
-/* -------------- WhatsApp flow + fade-in -------------- */
 function sendWhatsApp() {
     const raw = document.getElementById("receiver_phone").value;
-    const phone = cleanPhone(raw);
     const link = document.getElementById("tracking_link").href;
+    const phone = raw.replace(/\D+/g, "");
     const message = `Track me live:\n${link}`;
-
-    // open WhatsApp (user will press send there)
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
 
-    // set waiting state and fade to map after timeout
     awaitingWhatsApp = true;
-
-    // timeout simulates user pressing send in WhatsApp (can't detect actual send)
     setTimeout(() => {
         awaitingWhatsApp = false;
         showMapAfterSend();
     }, 2200);
 }
 
-function showMapAfterSend(){
+function showMapAfterSend() {
     if (hasShownMap) return;
     hasShownMap = true;
 
-    // collapse left column visually
     const left = document.querySelector(".col-left");
     left.style.transition = "opacity .45s, transform .45s";
     left.style.opacity = 0;
@@ -259,7 +362,6 @@ function showMapAfterSend(){
 
     setTimeout(() => {
         left.style.display = "none";
-        // show and init map area
         const m = document.getElementById("map");
         m.style.display = "block";
         m.classList.add("fade-in");
@@ -268,215 +370,39 @@ function showMapAfterSend(){
     }, 480);
 }
 
-/* -------------- Map initialization -------------- */
-function smoothMoveMarker(marker, newLat, newLng, duration = 800) {
-    if (!marker) return;
-
-    const startPos = marker.getLatLng();
-    const endPos = L.latLng(newLat, newLng);
-
-    const startTime = performance.now();
-
-    function animate(t) {
-        const progress = Math.min((t - startTime) / duration, 1);
-
-        // Ease-out animation (smooth stop)
-        const eased = 1 - Math.pow(1 - progress, 3);
-
-        const currentLat = startPos.lat + (endPos.lat - startPos.lat) * eased;
-        const currentLng = startPos.lng + (endPos.lng - startPos.lng) * eased;
-
-        marker.setLatLng([currentLat, currentLng]);
-
-        if (progress < 1) {
-            requestAnimationFrame(animate);
-        }
-    }
-
-    requestAnimationFrame(animate);
-}
-
-
-function initMap() {
-    if (map) return;
-
-    // create map
-    map = L.map("map", { zoomControl: false }).setView([-1.94995, 30.0588], 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
-    // add zoom control for larger screens
-    if (window.innerWidth > 700) {
-        L.control.zoom({ position: 'topright' }).addTo(map);
-    }
-}
-
-/* -------------- Draw polyline & auto-fit -------------- */
-function drawPolyline(poly) {
-    if (!map) return;
-
-    // hide map check
-    const mapDiv = document.getElementById("map");
-    if (mapDiv.style.display === "none") return;
-
-    // remove old route
-    if (routePolyline) {
-        map.removeLayer(routePolyline);
-        routePolyline = null;
-    }
-
-    // nothing to draw
-    if (!poly || poly.length === 0) return;
-
-    // draw line (Leaflet wants [lat, lng])
-    routePolyline = L.polyline(poly, {
-        color: "#0077ff",
-        weight: 5,
-        opacity: 0.95
-    }).addTo(map);
-
-    // include both markers in bounds
-    let bounds = routePolyline.getBounds();
-    if (driverMarker) bounds.extend(driverMarker.getLatLng());
-    if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
-
-    // fit map nicely
-   fitMapToActors();
-
-}
-
-
-/* -------------- Route request to backend (/api/route) -------------- */
-async function requestRoute(start, end) {
-    if (!start || !end) return;
-    const now = Date.now();
-    if (now - lastRouteCall < ROUTE_THROTTLE_MS) return;
-    lastRouteCall = now;
-
-    try {
-        const res = await fetch("/api/route", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ start, end })
-        });
-        const j = await res.json();
-        if (!res.ok) {
-            console.warn("Route error", j);
-            return;
-        }
-
-     // --- draw fallback straight line ---
-drawPolyline([
-    [start.lat, start.lng],
-    [end.lat, end.lng]
-]);
-
-// --- show stats ---
-const stats = document.getElementById("stats");
-stats.style.display = "block";
-stats.innerText = `${formatKm(j.distance_km)} · ${formatMin(j.eta_min)}`;
-
-    } catch (err) {
-        console.error("requestRoute error", err);
-    }
-}
-
-
-function fitMapToActors() {
-    if (!map) return;
-
-    let bounds = L.latLngBounds([]);
-
-    if (driverMarker) bounds.extend(driverMarker.getLatLng());
-    if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
-    if (routePolyline) bounds.extend(routePolyline.getBounds());
-
-    if (bounds.isValid()) {
-        map.fitBounds(bounds, {
-            padding: [80, 80],
-            maxZoom: 17,
-            animate: true
-        });
-    }
-}
-
-
-/* -------------- GPS watch - driver position -------------- */
-function startGPS() {
-    if (!navigator.geolocation) {
-        alert("Your device does not support GPS.");
-        return;
-    }
-
-   /* ---------------- Smooth driver movement in GPS watch ---------------- */
-navigator.geolocation.watchPosition(
-    pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const speed = pos.coords.speed || 0;
-
-        // --- driver marker (mobile-safe) ---
-        if (!driverMarker) {
-            driverMarker = L.marker([lat, lng], {
-                icon: L.icon({
-                    iconUrl: "/static/driver.png",
-                    iconSize: [20, 20]
-                })
-            }).addTo(map);
-
-            // center on driver first time
-            map.setView([lat, lng], 16);
-        } else {
-            // smooth move instead of instant setLatLng
-            smoothMoveMarker(driverMarker, lat, lng);
-        }
-
-        // --- send update to backend ---
-        if (delivery_id) {
-            socket.emit("driver_update", {
-                delivery_id,
-                lat,
-                lng,
-                speed
-            });
-        }
-
-        // --- re-draw route if receiver exists ---
-        if (receiverMarker) {
-            const rpos = receiverMarker.getLatLng();
-            requestRoute(
-                { lat, lng },
-                { lat: rpos.lat, lng: rpos.lng }
-            );
-        }
-
-        // --- auto-fit map on both markers ---
-        fitMapToActors();
-    },
-    err => {
-        console.warn("GPS failed:", err);
-    },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-);
-
-}
-
-
-/* -------------- Socket events -------------- */
+/* ---------------- Socket Events ---------------- */
 socket.on("connect", () => {
-    console.log("socket connected");
+    console.log("Socket connected");
 
-    // always join the room if delivery_id exists
     if (delivery_id) {
         socket.emit("join_delivery", { delivery_id, role: "driver" });
     }
 
-    // start GPS only AFTER socket is connected
     if (hasShownMap && !gpsStarted) {
         startGPS();
         gpsStarted = true;
     }
 });
 
+socket.on("receiver_update", (data) => {
+    if (!data || data.lat === undefined || data.lng === undefined) return;
+
+    const lat = parseFloat(data.lat);
+    const lng = parseFloat(data.lng);
+
+    if (!receiverMarker && map) {
+        receiverMarker = L.marker([lat, lng], { title: "Receiver" }).addTo(map);
+    } else if (receiverMarker) {
+        smoothMoveMarker(receiverMarker, { lat, lng });
+    }
+
+    if (driverMarker) {
+        const dPos = driverMarker.getLatLng();
+        requestRoute({ lat: dPos.lat, lng: dPos.lng }, { lat, lng });
+    }
+
+    fitMapToActors();
+});
 
 socket.on("driver_update", (data) => {
     if (!data || data.lat === undefined || data.lng === undefined) return;
@@ -487,104 +413,17 @@ socket.on("driver_update", (data) => {
     if (!driverMarker && map) {
         driverMarker = L.marker([lat, lng], { title: "Driver" }).addTo(map);
     } else if (driverMarker) {
-        smoothMoveMarker(driverMarker, lat, lng);
+        smoothMoveMarker(driverMarker, { lat, lng });
     }
 
-    // update route
     if (receiverMarker) {
-        const rpos = receiverMarker.getLatLng();
-        requestRoute(
-            { lat, lng },
-            { lat: rpos.lat, lng: rpos.lng }
-        );
+        const rPos = receiverMarker.getLatLng();
+        requestRoute({ lat, lng }, { lat: rPos.lat, lng: rPos.lng });
     }
 
     fitMapToActors();
 });
-
-
-
-socket.on("receiver_update", (data) => {
-    if (!data || data.lat === undefined || data.lng === undefined) return;
-
-    const lat = parseFloat(data.lat);
-    const lng = parseFloat(data.lng);
-
-    // --- Create marker on first update ---
-    if (!receiverMarker && map) {
-        receiverMarker = L.marker([lat, lng], { title: "You" }).addTo(map);
-    } 
-    
-    // --- Smooth movement after that ---
-    else if (receiverMarker) {
-        smoothMoveMarker(receiverMarker, lat, lng);
-    }
-
-    // --- If driver exists, request route ---
-    if (driverMarker) {
-        const dpos = driverMarker.getLatLng();
-        requestRoute(
-            { lat: dpos.lat, lng: dpos.lng },
-            { lat, lng }
-        );
-    }
-
-    // --- If driver not yet connected, follow the receiver only ---
-    else if (map) {
-        map.setView([lat, lng], 14);
-    }
-
-    // --- Auto zoom on both actors ---
-    fitMapToActors();
-});
-
-
-/* -------------- Utility: join room when createSession wraps -------------- */
-(function wrapCreateSession() {
-    const orig = createSession;
-    window.createSession = async function() {
-        await orig();
-        // join room on socket after session created
-       socket.emit("join_delivery", { delivery_id, role: "driver" });
-
-    };
-})();
-
-/* -------------- Optional debug helper (local testing) -------------- */
-function simulateReceiver(lat, lng) {
-    // useful while testing: fake a receiver_update from server
-    socket.emit("receiver_update", { delivery_id: delivery_id, lat: lat, lng: lng });
-}
-
-
-function normalizeRwandaNumber(num) {
-    if (!num) return null;
-    num = num.replace(/\D/g, "");
-
-    if (num.startsWith("07")) {
-        return "250" + num.slice(1);
-    }
-    if (num.startsWith("2507")) {
-        return num;
-    }
-    if (num.length === 9 && num.startsWith("7")) {
-        return "250" + num;
-    }
-    return num;
-}
-
-function openWhatsApp(phoneNumber, message) {
-    const normalized = normalizeRwandaNumber(phoneNumber);
-
-    if (!normalized) {
-        alert("WhatsApp number missing");
-        return;
-    }
-
-    const encoded = encodeURIComponent(message || "");
-    const url = `https://wa.me/${normalized}?text=${encoded}`;
-    window.location.href = url;
-}
+</script>
 
 
 
