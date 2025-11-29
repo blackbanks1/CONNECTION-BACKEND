@@ -216,7 +216,7 @@ function joinRoom() {
     console.log("[Receiver] Joining room:", deliveryId);
     socket.emit("join_delivery", { delivery_id: deliveryId, role: "receiver" });
 
-    socket.on("joined_room", (data) => console.log("[Receiver] Successfully joined:", data));
+    socket.on("join_delivery", (data) => console.log("[Receiver] Successfully joined:", data));
     
 }
 
