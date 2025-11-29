@@ -431,9 +431,9 @@ navigator.geolocation.watchPosition(
         }
 
         // --- send update to backend ---
-        if (window.deliveryId) {
+        if (delivery_id) {
             socket.emit("driver_update", {
-                delivery_id: window.deliveryId,
+                delivery_id,
                 lat,
                 lng,
                 speed
