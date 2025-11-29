@@ -16,7 +16,7 @@ def driver_has_active_subscription(driver: User):
     if driver.daily_pass_expires and datetime.utcnow() < driver.daily_pass_expires:
         return True
 
-    return False
+    return True
 
 
 
