@@ -173,19 +173,7 @@ function initSocket() {
 
 initSocket();
 
-/* ===========================
-   JOIN ROOM
-=========================== */
-function joinRoom() {
-    if (!deliveryId) return;
-
-    console.log("[Receiver] Joining room:", deliveryId);
-    socket.emit("join_delivery", { delivery_id: deliveryId, role: "receiver" });
-
-    socket.on("joined_room", (data) => console.log("[Receiver] Successfully joined:", data));
-
-    // Driver updates
-    socket.on("driver_update", (data) => {
+socket.on("driver_update", (data) => {
         if (!map || !data || data.lat === undefined || data.lng === undefined) return;
         const lat = parseFloat(data.lat);
         const lng = parseFloat(data.lng);
@@ -199,7 +187,7 @@ function joinRoom() {
             fitMapToMarkers();
         }
     });
-
+        
     // Receiver updates (other devices tracking same delivery)
     socket.on("receiver_update", (data) => {
         if (!data || data.lat === undefined || data.lng === undefined) return;
@@ -217,6 +205,18 @@ function joinRoom() {
             map.flyTo([lat, lng], 14);
         }
     });
+
+/* ===========================
+   JOIN ROOM
+=========================== */
+function joinRoom() {
+    if (!deliveryId) return;
+
+    console.log("[Receiver] Joining room:", deliveryId);
+    socket.emit("join_delivery", { delivery_id: deliveryId, role: "receiver" });
+
+    socket.on("joined_room", (data) => console.log("[Receiver] Successfully joined:", data));
+    
 }
 
 /* ===========================
