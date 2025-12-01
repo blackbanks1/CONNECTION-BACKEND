@@ -49,6 +49,13 @@ def haversine_meters(lat1, lon1, lat2, lon2):
 # ---------------------------------------
 # APP FACTORY
 # ---------------------------------------
+from flask import Flask, request, jsonify, render_template
+import os
+import requests
+
+# Assuming your other imports (db, blueprints, socketio, Config) are already defined
+# from your current app
+
 def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
@@ -61,7 +68,7 @@ def create_app():
     app.register_blueprint(receiver_bp, url_prefix="/t")
     app.register_blueprint(route_bp, url_prefix="/api")
 
-    # Attach SocketIO to app
+    # Attach SocketIO
     socketio.init_app(
         app,
         cors_allowed_origins="*",
@@ -82,8 +89,10 @@ def create_app():
         return render_template("driver.html")
 
     # -----------------------------
-    # ROUTE API (ORS + FALLBACK)
+    # ROUTE API (GraphHopper + fallback)
     # -----------------------------
+    GRAPHHOPPER_KEY = os.getenv("GRAPHHOPPER_KEY") or app.config.get("GRAPHHOPPER_KEY")
+
     @app.route("/api/route", methods=["POST"])
     def api_route():
         data = request.get_json() or {}
@@ -91,52 +100,54 @@ def create_app():
         end = data.get("end") or {}
 
         try:
-            s_lat = float(start["lat"]); s_lng = float(start["lng"])
-            e_lat = float(end["lat"]); e_lng = float(end["lng"])
+            s_lat, s_lng = float(start["lat"]), float(start["lng"])
+            e_lat, e_lng = float(end["lat"]), float(end["lng"])
         except Exception:
             return jsonify({"error": "invalid_coordinates"}), 400
 
-        ORS_API_KEY = os.getenv("ORS_API_KEY") or app.config.get("ORS_API_KEY")
-
-        if ORS_API_KEY:
+        # -----------------------------
+        # Use GraphHopper if key available
+        # -----------------------------
+        if GRAPHHOPPER_KEY:
             try:
-                url = "https://api.openrouteservice.org/v2/directions/driving-car"
-                coords = [[s_lng, s_lat], [e_lng, e_lat]]
-                payload = {"coordinates": coords}
-                headers = {
-                    "Authorization": ORS_API_KEY,
-                    "Content-Type": "application/json"
-                }
+                url = (
+                    f"https://graphhopper.com/api/1/route?"
+                    f"point={s_lat},{s_lng}&point={e_lat},{e_lng}"
+                    f"&vehicle=car&locale=en&points_encoded=false&key={GRAPHHOPPER_KEY}"
+                )
 
-                r = requests.post(url, json=payload, headers=headers, timeout=8)
+                r = requests.get(url, timeout=8)
                 r.raise_for_status()
                 j = r.json()
 
-                feat = j["features"][0]
+                if "paths" in j and len(j["paths"]) > 0:
+                    path = j["paths"][0]
+                    # GraphHopper coordinates: [lng, lat] → flip for Leaflet
+                    polyline = [[lat, lng] for lng, lat in path["points"]["coordinates"]]
+                    distance_km = path.get("distance", 0) / 1000.0
+                    eta_min = path.get("time", 0) / 1000 / 60.0
 
-                raw_coords = feat["geometry"]["coordinates"]
-                polyline = [[c[1], c[0]] for c in raw_coords]
-
-                summary = feat["properties"]["summary"]
-                distance_km = summary["distance"] / 1000.0
-                eta_min = summary["duration"] / 60.0
-
-                return jsonify({
-                    "distance_km": distance_km,
-                    "eta_min": eta_min,
-                    "polyline": polyline,
-                    "via": "ors"
-                })
+                    return jsonify({
+                        "polyline": polyline,
+                        "distance_km": distance_km,
+                        "eta_min": eta_min,
+                        "via": "graphhopper"
+                    })
 
             except Exception:
+                # Log if needed, but fallback handled below
                 pass
 
-        meters = haversine_meters(s_lat, s_lng, e_lat, e_lng)
+        # -----------------------------
+        # Fallback: straight line + estimated ETA
+        # -----------------------------
+        meters = ((s_lat - e_lat)**2 + (s_lng - e_lng)**2)**0.5 * 111_000  # rough haversine in meters
         km = meters / 1000.0
         avg_kmh = 30.0
         eta_min = (km / avg_kmh) * 60.0
 
         return jsonify({
+            "polyline": [[s_lat, s_lng], [e_lat, e_lng]],
             "distance_km": km,
             "eta_min": eta_min,
             "via": "estimate",

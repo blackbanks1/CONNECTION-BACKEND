@@ -89,34 +89,43 @@
         }
 
         .stats-box {
-            position: fixed;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            padding: 10px 16px;
-            border-radius: 14px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-            font-weight: 600;
-            color: #333;
-            display: none;
-            z-index: 9999;
-        }
-    #stats {
-    width: 100px;
-    height: 40px;
-    position: absolute;
-    margin: auto;
-    top: 100px;       /* distance from top of map */
-    left: 100px;      /* distance from left */
-    background: rgba(255, 255, 255, 0.9);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #0077ff;
-    z-index: 1000;   /* make sure it’s above map layers */
+    position: absolute;      /* ensure absolute positioning inside map */
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 18px;
+    min-width: 220px;
+    background: rgba(255,255,255,0.98);
+    border-radius: 12px;
+    padding: 10px 16px;
+    box-shadow: 0 10px 30px rgba(12,36,80,0.12);
+    font-weight: 700;
+    display: none;
+    z-index: 9999;
+    text-align: center;
+    font-size: 15px;          /* default font size */
 }
+
+/* Small devices */
+@media (max-width: 450px) {
+    .stats-box {
+        bottom: 8px;
+        min-width: 180px;
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+}
+
+/* Ultra small devices */
+@media (max-width: 350px) {
+    .stats-box {
+        bottom: 6px;
+        min-width: 160px;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+
 
     </style>
 
@@ -342,40 +351,59 @@ async function requestRoute(start, end) {
         });
 
         const j = await res.json();
-        console.log("Route API response:", j); // Debug: check fields
 
-        if (!res.ok) {
-            console.warn("Route API returned error:", j);
+        if (!res.ok || !j) {
+            console.warn("Route API error", j);
             return;
         }
 
-        // Remove old polyline if exists
+        // -------------------------
+        // DRAW POLYLINE
+        // -------------------------
         if (routePolyline) {
             map.removeLayer(routePolyline);
             routePolyline = null;
         }
 
-        // Draw fallback straight line if API doesn't return coordinates
-        routePolyline = L.polyline(
-            [[start.lat, start.lng], [end.lat, end.lng]],
-            { color: "#0077ff", weight: 5, opacity: 0.95 }
-        ).addTo(map);
+        if (j.polyline && Array.isArray(j.polyline) && j.polyline.length > 1) {
+            routePolyline = L.polyline(j.polyline, {
+                color: "#0077ff",
+                weight: 5,
+                opacity: 0.95
+            }).addTo(map);
+        } else {
+            // fallback straight line
+            routePolyline = L.polyline(
+                [
+                    [start.lat, start.lng],
+                    [end.lat, end.lng]
+                ],
+                { color: "#0077ff", weight: 5, opacity: 0.95 }
+            ).addTo(map);
+        }
 
-        // Show distance and ETA safely
+        // -------------------------
+        // SHOW DISTANCE + ETA
+        // -------------------------
         const stats = document.getElementById("stats");
         if (stats) {
-            // Convert API values if needed
-            const distanceKm = j.distance_km ?? (j.distance ? j.distance / 1000 : 0);
-            const etaMin = j.eta_min ?? (j.duration ? j.duration / 60 : 0);
+            const distanceKm = j.distance_km ?? 0;
+            const etaMin = j.eta_min ?? 0;
 
             stats.style.display = "block";
             stats.innerText = `${formatKm(distanceKm)} · ${formatMin(etaMin)}`;
         }
 
+        // -------------------------
+        // FIT MAP TO MARKERS & ROUTE
+        // -------------------------
+        fitMapToActors();
+
     } catch (err) {
         console.error("requestRoute error:", err);
     }
 }
+
 
 /* ===========================
    RECEIVER GPS TRACKING
