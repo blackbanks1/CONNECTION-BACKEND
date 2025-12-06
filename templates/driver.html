@@ -109,7 +109,7 @@ label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
     min-width: 120px;
     background: rgba(255,255,255,0.98);
     border-radius: 12px;
-    padding: 10px 16px;
+    padding: 8px 12px;
     box-shadow: 0 10px 30px rgba(12,36,80,0.12);
     font-weight:700;
     display:none;
@@ -327,19 +327,20 @@ function showMapAfterSend() {
         mapDiv.style.display = "block";
         mapDiv.classList.add("fade-in");
 
-        // Initialize map if not already
-        initMap();
+        // ⚡ Give browser a moment to compute layout before initializing map
+        setTimeout(() => {
+            initMap();
 
-        // ⚡ Responsiveness: recompute map size
-        if (map) {
-            map.invalidateSize();      // Force Leaflet to resize properly
-            fitMapToActors();          // Fit driver/receiver markers
-        }
+            if (map) {
+                map.invalidateSize(); // recalculates tile sizes
+                fitMapToActors();     // fit driver & receiver markers
+            }
 
-        
-        startGPS();
+            startGPS();
+        }, 50); // 50ms delay is enough to ensure proper height
     }, 480);
 }
+
 
 
 
