@@ -57,7 +57,10 @@ body {
     max-width:36%; 
 }
 
-.col-right { flex:1; }
+.col-right {
+     flex:1;
+     min-height: 360px;
+ }
 
 h3 { margin:0 0 8px 0; font-size:18px; }
 label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
@@ -86,7 +89,7 @@ label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
     padding: 12px;
     box-shadow: 0 16px 48px rgba(12,36,80,0.06);
     position: relative;
-    min-height: 300px;
+    min-height: 360px;
 }
 
 #map { 
@@ -327,41 +330,47 @@ function showMapAfterSend() {
         mapDiv.style.display = "block";
         mapDiv.classList.add("fade-in");
 
-        // ⚡ Give browser a moment to compute layout before initializing map
+        // ⚡ Give browser time to compute layout
         setTimeout(() => {
-            initMap();
+            // Ensure Leaflet initializes after DOM layout
+            requestAnimationFrame(() => {
+                // Initialize map if not already
+                initMap();
 
-            if (map) {
-                map.invalidateSize(); // recalculates tile sizes
-                fitMapToActors();     // fit driver & receiver markers
-            }
+                if (map) {
+                    map.invalidateSize(); // force proper rendering
+                    fitMapToActors();     // fit driver & receiver markers
+                }
 
-            // ✅ Emit initial driver location immediately
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    pos => {
-                        const lat = pos.coords.latitude;
-                        const lng = pos.coords.longitude;
-                        if (!driverMarker) {
-                            driverMarker = L.marker([lat, lng], {
-                                icon: L.icon({ iconUrl: "/static/driver.png", iconSize: [20, 20] })
-                            }).addTo(map);
-                        } else {
-                            smoothMoveMarker(driverMarker, lat, lng);
-                        }
+                // Emit initial driver location
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        pos => {
+                            const lat = pos.coords.latitude;
+                            const lng = pos.coords.longitude;
 
-                        if (delivery_id) {
-                            socket.emit("driver_update", { delivery_id, lat, lng, speed: 0 });
-                        }
-                    },
-                    err => console.warn("GPS failed:", err),
-                    { enableHighAccuracy: true }
-                );
-            }
+                            if (!driverMarker) {
+                                driverMarker = L.marker([lat, lng], {
+                                    icon: L.icon({ iconUrl: "/static/driver.png", iconSize: [20, 20] })
+                                }).addTo(map);
+                            } else {
+                                smoothMoveMarker(driverMarker, lat, lng);
+                            }
 
-            startGPS(); // then start watchPosition normally
-        }, 50); // small delay
-    }, 480);
+                            if (delivery_id) {
+                                socket.emit("driver_update", { delivery_id, lat, lng, speed: 0 });
+                            }
+                        },
+                        err => console.warn("GPS failed:", err),
+                        { enableHighAccuracy: true }
+                    );
+                }
+
+                // Start continuous GPS tracking
+                startGPS();
+            });
+        }, 50); // small delay to ensure container height is computed
+    }, 480); // fade-out duration
 }
 
 
