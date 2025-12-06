@@ -127,6 +127,25 @@ def create_app():
                     distance_km = path.get("distance", 0) / 1000.0
                     eta_min = path.get("time", 0) / 1000 / 60.0
 
+
+                    # --- Safety Patch: Fix very small routes (GraphHopper bug) ---
+                # If GH returns nonsense (e.g., distance 0 or only 1 coordinate)
+                if (len(polyline) < 2) or distance_km < 0.02:
+                    # Use fallback straight line instead
+                    polyline = [
+                        [s_lat, s_lng],
+                        [e_lat, e_lng]
+                    ]
+                
+                    # Use more accurate haversine fallback
+                    meters = haversine_meters(s_lat, s_lng, e_lat, e_lng)
+                    distance_km = meters / 1000.0
+                
+                    # Urban realistic fallback speed (good ETA)
+                    avg_kmh = 22.0
+                    eta_min = (distance_km / avg_kmh) * 60.0
+
+
                     return jsonify({
                         "polyline": polyline,
                         "distance_km": distance_km,

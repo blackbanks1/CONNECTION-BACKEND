@@ -86,13 +86,13 @@ label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
     padding: 12px;
     box-shadow: 0 16px 48px rgba(12,36,80,0.06);
     position: relative;
-    min-height: 420px;
+    min-height: 300px;
 }
 
 #map { 
     width: 100%;          
     height: 60vh;         
-    min-height: 380px;      /* UPDATED for better small-screen usability */
+    min-height: 300px;      /* UPDATED for better small-screen usability */
     transition: opacity 0.45s, transform 0.45s;
 }
 
@@ -106,7 +106,7 @@ label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
     left: 50%;
     transform: translateX(-50%);
     bottom: 18px;
-    min-width: 220px;
+    min-width: 120px;
     background: rgba(255,255,255,0.98);
     border-radius: 12px;
     padding: 10px 16px;
@@ -143,6 +143,7 @@ label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
 /* Small phones */
 @media (max-width: 450px) {
     .bottom-stats {
+        min-width:120px;
         bottom: 6px;           /* UPDATED */
         padding: 8px 10px;     /* UPDATED */
         font-size: 14px;       /* UPDATED */
@@ -152,7 +153,7 @@ label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
 /* Ultra-small devices */
 @media (max-width: 350px) {
     #map {
-        min-height: 330px;     /* Better fit */
+        min-height: 300px;     /* Better fit */
     }
 }
 
@@ -340,9 +341,6 @@ function showMapAfterSend() {
     }, 480);
 }
 
-window.addEventListener("resize", () => {
-    if (map) map.invalidateSize();
-});
 
 
 /* -------------- Map initialization -------------- */
@@ -529,6 +527,11 @@ function simulateReceiver(lat, lng) {
     if (!delivery_id) return;
     socket.emit("receiver_update", { delivery_id, lat, lng });
 }
+
+window.addEventListener("resize", () => {
+    if (map) map.invalidateSize();
+});
+
 
 </script>
 
