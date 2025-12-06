@@ -116,7 +116,7 @@ def create_app():
                     f"&vehicle=car&locale=en&points_encoded=false&key={GRAPHHOPPER_KEY}"
                 )
 
-                r = requests.get(url, timeout=8)
+                r = requests.get(url, timeout=40)
                 r.raise_for_status()
                 j = r.json()
 
