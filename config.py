@@ -9,14 +9,12 @@ class Config:
     # -------------------------
     # DATABASE CONFIG
     # -------------------------
-    # Use PostgreSQL in production, SQLite locally
     db_url = os.environ.get("DATABASE_URL", "")
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://")
 
     SQLALCHEMY_DATABASE_URI = db_url or "sqlite:///local.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
 
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
@@ -24,6 +22,7 @@ class Config:
         "pool_size": 5,
         "max_overflow": 5
     }
+
     # -------------------------
     # FORCE HTTPS IN PRODUCTION
     # -------------------------
@@ -36,9 +35,15 @@ class Config:
     CORS_ALLOWED_ORIGINS = "*"
 
     # -------------------------
-    # OPENROUTESERVICE API KEY
+    # ROUTING API KEYS
     # -------------------------
     ORS_API_KEY = os.getenv("ORS_API_KEY")
+
+    # ✅ ADD THIS LINE (Your real GraphHopper Key)
+    GRAPHHOPPER_KEY = os.getenv(
+        "GRAPHHOPPER_KEY",
+        "27764287-a135-45e3-95a1-e0a8aa7569e2"
+    )
 
     # -------------------------
     # TRIAL PERIOD SETTINGS

@@ -98,13 +98,13 @@ def create_app():
         data = request.get_json() or {}
         start = data.get("start") or {}
         end = data.get("end") or {}
-
+    
         try:
             s_lat, s_lng = float(start["lat"]), float(start["lng"])
             e_lat, e_lng = float(end["lat"]), float(end["lng"])
         except Exception:
             return jsonify({"error": "invalid_coordinates"}), 400
-
+    
         # -----------------------------
         # Use GraphHopper if key available
         # -----------------------------
@@ -115,56 +115,45 @@ def create_app():
                     f"point={s_lat},{s_lng}&point={e_lat},{e_lng}"
                     f"&vehicle=car&locale=en&points_encoded=false&key={GRAPHHOPPER_KEY}"
                 )
-
+    
                 r = requests.get(url, timeout=40)
                 r.raise_for_status()
                 j = r.json()
-
+    
                 if "paths" in j and len(j["paths"]) > 0:
                     path = j["paths"][0]
-                    # GraphHopper coordinates: [lng, lat] → flip for Leaflet
+    
+                    # Flip [lng,lat] → [lat,lng]
                     polyline = [[lat, lng] for lng, lat in path["points"]["coordinates"]]
                     distance_km = path.get("distance", 0) / 1000.0
                     eta_min = path.get("time", 0) / 1000 / 60.0
-
-
-                    # --- Safety Patch: Fix very small routes (GraphHopper bug) ---
-                # If GH returns nonsense (e.g., distance 0 or only 1 coordinate)
-                if (len(polyline) < 2) or distance_km < 0.02:
-                    # Use fallback straight line instead
-                    polyline = [
-                        [s_lat, s_lng],
-                        [e_lat, e_lng]
-                    ]
-                
-                    # Use more accurate haversine fallback
-                    meters = haversine_meters(s_lat, s_lng, e_lat, e_lng)
-                    distance_km = meters / 1000.0
-                
-                    # Urban realistic fallback speed (good ETA)
-                    avg_kmh = 22.0
-                    eta_min = (distance_km / avg_kmh) * 60.0
-
-
+    
+                    # SAFETY PATCH — correctly indented
+                    if (len(polyline) < 2) or distance_km < 0.02:
+                        meters = haversine_meters(s_lat, s_lng, e_lat, e_lng)
+                        distance_km = meters / 1000.0
+                        avg_kmh = 22.0
+                        eta_min = (distance_km / avg_kmh) * 60.0
+                        polyline = [[s_lat, s_lng], [e_lat, e_lng]]
+    
                     return jsonify({
                         "polyline": polyline,
                         "distance_km": distance_km,
                         "eta_min": eta_min,
                         "via": "graphhopper"
                     })
-
+    
             except Exception:
-                # Log if needed, but fallback handled below
                 pass
-
+    
         # -----------------------------
-        # Fallback: straight line + estimated ETA
+        # Fallback
         # -----------------------------
-        meters = ((s_lat - e_lat)**2 + (s_lng - e_lng)**2)**0.5 * 111_000  # rough haversine in meters
+        meters = haversine_meters(s_lat, s_lng, e_lat, e_lng)
         km = meters / 1000.0
         avg_kmh = 30.0
         eta_min = (km / avg_kmh) * 60.0
-
+    
         return jsonify({
             "polyline": [[s_lat, s_lng], [e_lat, e_lng]],
             "distance_km": km,
@@ -172,9 +161,7 @@ def create_app():
             "via": "estimate",
             "assumed_kmh": avg_kmh
         })
-
-    return app
-
+    
 
 # ---------------------------------------
 # APP + SOCKETIO EVENTS
