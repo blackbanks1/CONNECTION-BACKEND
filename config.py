@@ -42,7 +42,7 @@ class Config:
     # ✅ ADD THIS LINE (Your real GraphHopper Key)
     GRAPHHOPPER_KEY = os.getenv(
         "GRAPHHOPPER_KEY",
-        "27764287-a135-45e3-95a1-e0a8aa7569e2"
+        "4383fd4a-b9a1-4685-93e3-4070ccc1849b"
     )
 
     # -------------------------

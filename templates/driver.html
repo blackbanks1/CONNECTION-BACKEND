@@ -97,7 +97,7 @@ label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; }
     height: 60vh;         
     min-height: 300px;     
     transition: opacity 0.45s, transform 0.45s;
-    display: block; /* ensure map container always exists */
+    display: none; /* ensure map container always exists */
 }
 
 /* Fade-in */
@@ -310,6 +310,7 @@ function showMapAfterSend() {
     const left = document.querySelector(".col-left");
     const mapDiv = document.getElementById("map");
 
+    // Fade out left panel
     left.style.transition = "opacity .45s, transform .45s";
     left.style.opacity = 0;
     left.style.transform = "translateY(-8px)";
@@ -317,14 +318,17 @@ function showMapAfterSend() {
     setTimeout(() => {
         left.style.display = "none";
 
+        // Show map container
         mapDiv.style.display = "block";
         mapDiv.classList.add("fade-in");
 
-        requestAnimationFrame(() => {
+        // Wait for layout to complete before initializing Leaflet
+        setTimeout(() => {
             initMap();
             map.invalidateSize();
             fitMapToActors();
 
+            // Emit initial driver location
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     pos => {
@@ -349,8 +353,8 @@ function showMapAfterSend() {
             }
 
             startGPS();
-        });
-    }, 480);
+        }, 100); // short delay to ensure container is rendered
+    }, 480); // match fade-out duration
 }
 
 /* -------------- Map initialization -------------- */
