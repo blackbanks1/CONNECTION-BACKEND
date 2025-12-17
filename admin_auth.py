@@ -9,7 +9,7 @@ This module handles admin user authentication including:
 """
 
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token,unset_jwt_cookies, jwt_required, get_jwt_identity, set_access_cookies, get_csrf_token
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
 import re
@@ -143,16 +143,15 @@ class AdminAuthService:
             expires_delta=timedelta(hours=24)
         )
         
-        return {
+        response = jsonify({
             'success': True,
             'message': 'Login successful',
-            'data': {
-                'access_token': access_token,
-                'email': email,
-                'username': admin['username'],
-                'token_type': 'Bearer'
-            }
-        }, 200
+            'csrf_token': get_csrf_token(access_token)
+        })
+        
+        set_access_cookies(response, access_token)
+        return response, 200
+
     
     @classmethod
     def logout_admin(cls, email):
@@ -248,30 +247,34 @@ def login():
             'error': str(e)
         }), 500
 
-
 @admin_auth_bp.route('/logout', methods=['POST'])
-@jwt_required()
+@jwt_required()  # uses cookie automatically
 def logout():
     """
     Logout admin user
-    
-    Requires: Valid JWT token in Authorization header
-    
+
+    Requires: Valid JWT token in HTTP-only cookie
+
     Returns:
         JSON response confirming logout
     """
     try:
         current_admin = get_jwt_identity()
-        response, status_code = AdminAuthService.logout_admin(current_admin)
-        return jsonify(response), status_code
-    
+        
+        # Clear JWT cookies
+        response = jsonify({
+            'success': True,
+            'message': f'Admin {current_admin} logged out successfully'
+        })
+        unset_jwt_cookies(response)
+        return response, 200
+
     except Exception as e:
         return jsonify({
             'success': False,
             'message': 'An error occurred during logout',
             'error': str(e)
         }), 500
-
 
 @admin_auth_bp.route('/verify', methods=['GET'])
 @jwt_required()

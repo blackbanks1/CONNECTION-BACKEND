@@ -2,6 +2,7 @@ Flask
 Flask-SocketIO
 python-socketio
 python-engineio
+flask_jwt_extended
 gunicorn
 eventlet
 SQLAlchemy

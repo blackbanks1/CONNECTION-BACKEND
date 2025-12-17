@@ -11,15 +11,13 @@ logger = logging.getLogger(__name__)
 
 # ==================== Authentication Middleware ====================
 
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
 def admin_required(f):
-    """Decorator to check if user is authenticated as admin"""
     @wraps(f)
+    @jwt_required()
     def decorated_function(*args, **kwargs):
-        if 'admin_id' not in session:
-            return jsonify({
-                'success': False,
-                'message': 'Unauthorized: Admin authentication required'
-            }), 401
+        admin_email = get_jwt_identity()  # comes from admin_auth.py
         return f(*args, **kwargs)
     return decorated_function
 
@@ -71,16 +69,14 @@ def admin_login():
         if validate_admin_credentials(username, password):
             # TODO: Fetch admin details from database
             admin_id = username  # Placeholder
-            session['admin_id'] = admin_id
+            
             
             logger.info(f"Admin login successful for user: {username}")
             
             return jsonify({
                 'success': True,
                 'message': 'Admin login successful',
-                'admin_id': admin_id,
-                'token': session.get('admin_id')
-            }), 200
+                }),200
         else:
             logger.warning(f"Failed admin login attempt for user: {username}")
             return jsonify({
@@ -109,7 +105,6 @@ def admin_logout():
     }
     """
     try:
-        session.pop('admin_id', None)
         logger.info("Admin logout successful")
         
         return jsonify({

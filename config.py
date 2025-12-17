@@ -5,6 +5,7 @@ class Config:
     # GENERAL APP CONFIG
     # -------------------------
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
 
     # -------------------------
     # DATABASE CONFIG
@@ -37,7 +38,6 @@ class Config:
     # -------------------------
     # ROUTING API KEYS
     # -------------------------
-    ORS_API_KEY = os.getenv("ORS_API_KEY")
 
     # ✅ ADD THIS LINE (Your real GraphHopper Key)
     GRAPHHOPPER_KEY = os.getenv(
