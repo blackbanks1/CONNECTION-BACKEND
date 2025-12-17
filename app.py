@@ -131,7 +131,7 @@ def create_app():
     app.register_blueprint(driver_auth, url_prefix="/driver")
     app.register_blueprint(receiver_bp, url_prefix="/t")
     app.register_blueprint(route_bp, url_prefix="/api")
-    app.register_blueprint(admin_auth_bp)
+    app.register_blueprint(admin_auth_bp, url_prefix="/api/admin/auth")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
 
