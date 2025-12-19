@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from math import radians, cos, sin, asin, sqrt, atan2
 from functools import wraps
+from dotenv import load_dotenv
 import logging
 
 from flask import Flask, render_template, abort, request, session, jsonify
@@ -107,9 +108,11 @@ def authenticated_only_socketio(f):
 # APP FACTORY
 # ---------------------------------------
 def create_app():
+    load_dotenv()  # Load environment variables from .env file
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
     
+
     
     app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # already exists
     app.config['JWT_TOKEN_LOCATION'] = ['cookies']   # use cookies
@@ -123,7 +126,9 @@ def create_app():
     app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JS access
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
     app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
-    
+
+    app.secret_key = os.environ.get('SECRET_KEY')
+
     db.init_app(app)
      
     # Register blueprints

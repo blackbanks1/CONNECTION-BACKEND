@@ -67,19 +67,28 @@ def signup_api():
 
 @driver_auth.route("/login", methods=["POST"])
 def login_driver():
+    try:
+        data = request.get_json() or {}
 
-    data = request.get_json() or {}
+        phone = data.get("phone")
+        password = data.get("password")
 
-    phone = data.get("phone")
-    password = data.get("password")
+        if not phone or not password:
+            return jsonify({"error": "phone_and_password_required"}), 400
 
-    user = User.query.filter_by(phone=phone).first()
+        user = User.query.filter_by(phone=phone).first()
 
-    if not user or not user.check_password(password):
-        return jsonify({"error": "invalid_credentials"}), 401
+        if not user or not user.check_password(password):
+            return jsonify({"error": "invalid_credentials"}), 401
 
-    session["user_id"] = user.id
-    return jsonify({"status": "success"}), 200
+        # Make sure session secret key is set in your app
+        session["user_id"] = user.id
+
+        return jsonify({"status": "success"}), 200
+
+    except Exception as e:
+        # Catch all unexpected errors
+        return jsonify({"error": "internal_server_error", "details": str(e)}), 500
 
 
 @driver_auth.route("/logout", methods=["POST"])
