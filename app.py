@@ -114,7 +114,7 @@ def create_app():
     app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # already exists
     app.config['JWT_TOKEN_LOCATION'] = ['cookies']   # use cookies
     app.config['JWT_COOKIE_SECURE'] = False          # True if using HTTPS
-    app.config['JWT_COOKIE_CSRF_PROTECT'] = True     # ✅ enable CSRF protection
+    app.config['JWT_COOKIE_CSRF_PROTECT'] = False     # ✅ enable CSRF protection
 
     jwt = JWTManager(app)
     
@@ -131,8 +131,8 @@ def create_app():
     app.register_blueprint(driver_auth, url_prefix="/driver")
     app.register_blueprint(receiver_bp, url_prefix="/t")
     app.register_blueprint(route_bp, url_prefix="/api")
-    app.register_blueprint(admin_auth_bp, url_prefix="/api/admin/auth")
-    app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(admin_auth_bp, url_prefix="/admin/auth")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
 
 
     # Configure CORS for SocketIO (restrict in production)

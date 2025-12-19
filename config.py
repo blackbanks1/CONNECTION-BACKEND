@@ -54,3 +54,8 @@ class Config:
     # PAYMENT & PRICING (future)
     # -------------------------
     DAILY_PASS_PRICE_RWF = int(os.getenv("DAILY_PASS_PRICE_RWF", 500))
+    
+    # JWT cookie support (REQUIRED)
+    JWT_TOKEN_LOCATION = ["cookies"]
+    JWT_COOKIE_SECURE = False   # True only in HTTPS production
+    JWT_COOKIE_CSRF_PROTECT = False
