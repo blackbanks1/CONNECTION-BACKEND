@@ -1,58 +1,69 @@
-<!-- templates/admin/deliveries.html -->
+<!-- templates/admin/delivery_detail.html -->
 {% extends "admin/base.html" %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h4 class="mb-0">All Deliveries</h4>
-  <form class="d-flex gap-2" method="GET" action="{{ url_for('admin.list_deliveries') }}">
-    <input type="text" name="search" class="form-control" placeholder="Search deliveries..." value="{{ search }}">
-    <select name="status" class="form-select" style="width:150px">
-      <option value="">All Status</option>
-      <option value="en_route" {% if status == 'en_route' %}selected{% endif %}>En Route</option>
-      <option value="delivered" {% if status == 'delivered' %}selected{% endif %}>Delivered</option>
-    </select>
-    <button type="submit" class="btn btn-primary">Filter</button>
-  </form>
+  <h4 class="mb-0">Delivery Details</h4>
+  <div>
+    {% if delivery.status != 'delivered' %}
+    <a href="{{ url_for('track', join=delivery.id) }}" target="_blank" class="btn btn-outline-primary">
+      <i class="fa-solid fa-eye"></i> View Live
+    </a>
+    {% endif %}
+    <a href="{{ url_for('admin.list_deliveries') }}" class="btn btn-light ms-2">Back</a>
+  </div>
 </div>
 
-<div class="card shadow-sm">
-  <div class="card-body">
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead>
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Basic Info</h5>
+        <table class="table borderless">
           <tr>
-            <th>ID</th>
+            <th style="width: 150px;">Delivery ID</th>
+            <td><code>{{ delivery.id }}</code></td>
+          </tr>
+          <tr>
             <th>Status</th>
-            <th>Started</th>
-            <th>Driver</th>
-            <th>Receiver</th>
-            <th>Consent</th>
-            <th>Actions</th>
+            <td>
+              <span class="badge bg-{{ 'success' if delivery.status == 'delivered' else 'warning' }}">
+                {{ delivery.status }}
+              </span>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {% for delivery in deliveries %}
           <tr>
-            <td><a href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}" class="text-decoration-none">{{ delivery.id[:8] }}...</a></td>
-            <td><span class="badge bg-{{ 'success' if delivery.status == 'delivered' else 'warning' }}">{{ delivery.status }}</span></td>
-            <td>{{ delivery.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
-            <td>{{ delivery.driver_id }}</td>
-            <td>{{ delivery.receiver_id }}</td>
+            <th>Started</th>
+            <td>{{ delivery.start_time_str }}</td>
+          </tr>
+          {% if delivery.confirmed_at %}
+          <tr>
+            <th>Delivered</th>
+            <td>{{ delivery.confirmed_at_str }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <th>Driver</th>
+            <td>{{ delivery.driver.name if delivery.driver else delivery.driver_id }}</td>
+          </tr>
+          <tr>
+            <th>Receiver</th>
+            <td>{{ delivery.receiver.name if delivery.receiver else delivery.receiver_id }}</td>
+          </tr>
+          <tr>
+            <th>Price</th>
+            <td>${{ "%.2f"|format(delivery.price or 0) }}</td>
+          </tr>
+          <tr>
+            <th>Payment</th>
             <td>
-              <span class="badge bg-{{ 'success' if delivery.receiver_consented else 'danger' }}">{{ 'Yes' if delivery.receiver_consented else 'No' }}</span>
-            </td>
-            <td>
-              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}">View</a>
-              {% if delivery.status != 'delivered' %}
-              <a class="btn btn-sm btn-outline-info" href="/?join={{ delivery.id }}" target="_blank">Track</a>
-              {% endif %}
+              <span class="badge bg-{{ 'success' if delivery.payment_status == 'paid' else 'warning' }}">
+                {{ delivery.payment_status or 'pending' }}
+              </span>
             </td>
           </tr>
-          {% else %}
-          <tr><td colspan="7" class="text-center text-muted">No deliveries found.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   </div>
 </div>

@@ -1,4 +1,5 @@
 version: "3.8"
+
 services:
   app:
     build: .
@@ -6,7 +7,7 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY}
-      - ORS_API_KEY=${ORS_API_KEY}
+      - GRAPHHOPPER_API_KEY=${GRAPHHOPPER_API_KEY}
     depends_on:
       - db
     networks:

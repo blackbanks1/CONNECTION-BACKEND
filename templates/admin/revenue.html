@@ -9,12 +9,13 @@
   </div>
 </div>
 
+<!-- Revenue summary cards -->
 <div class="row g-3 mb-3">
   <div class="col-md-3">
     <div class="card stats-card shadow-sm">
       <div class="card-body">
         <div class="fs-6 text-uppercase text-muted">Today's Revenue</div>
-        <div class="stats-number">${{ "{:,.2f}".format(today_revenue) }}</div>
+        <div class="stats-number">${{ "%.2f"|format(today_revenue) }}</div>
       </div>
     </div>
   </div>
@@ -22,7 +23,7 @@
     <div class="card stats-card shadow-sm">
       <div class="card-body">
         <div class="fs-6 text-uppercase text-muted">Week Revenue</div>
-        <div class="stats-number">${{ "{:,.2f}".format(week_revenue) }}</div>
+        <div class="stats-number">${{ "%.2f"|format(week_revenue) }}</div>
       </div>
     </div>
   </div>
@@ -30,7 +31,7 @@
     <div class="card stats-card shadow-sm">
       <div class="card-body">
         <div class="fs-6 text-uppercase text-muted">Month Revenue</div>
-        <div class="stats-number">${{ "{:,.2f}".format(month_revenue) }}</div>
+        <div class="stats-number">${{ "%.2f"|format(month_revenue) }}</div>
       </div>
     </div>
   </div>
@@ -38,13 +39,14 @@
     <div class="card stats-card shadow-sm">
       <div class="card-body">
         <div class="fs-6 text-uppercase text-muted">Avg. per Delivery</div>
-        <div class="stats-number">${{ "{:,.2f}".format(avg_price) }}</div>
+        <div class="stats-number">${{ "%.2f"|format(avg_price) }}</div>
       </div>
     </div>
   </div>
 </div>
 
 <div class="row g-3">
+  <!-- Revenue chart -->
   <div class="col-md-8">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -54,6 +56,7 @@
     </div>
   </div>
 
+  <!-- Recent payments + metrics -->
   <div class="col-md-4">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -70,9 +73,17 @@
             <tbody>
               {% for delivery in recent_paid %}
               <tr>
-                <td><a href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}">{{ delivery.id[:8] }}...</a></td>
-                <td>${{ "{:.2f}".format(delivery.price or 0) }}</td>
-                <td><span class="badge bg-{{ 'success' if delivery.payment_status == 'paid' else 'warning' }}">{{ delivery.payment_status }}</span></td>
+                <td>
+                  <a href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}">
+                    {{ delivery.id|string|truncate(11, True, '') }}
+                  </a>
+                </td>
+                <td>${{ "%.2f"|format(delivery.price or 0) }}</td>
+                <td>
+                  <span class="badge bg-{{ 'success' if delivery.payment_status == 'paid' else 'warning' }}">
+                    {{ delivery.payment_status }}
+                  </span>
+                </td>
               </tr>
               {% else %}
               <tr><td colspan="3" class="text-center text-muted">No recent payments</td></tr>
@@ -89,15 +100,15 @@
         <div class="list-group list-group-flush">
           <div class="list-group-item d-flex justify-content-between align-items-center">
             Average Distance
-            <span class="badge bg-primary rounded-pill">{{ "{:.1f}".format(avg_distance) }} km</span>
+            <span class="badge bg-primary rounded-pill">{{ "%.1f"|format(avg_distance) }} km</span>
           </div>
           <div class="list-group-item d-flex justify-content-between align-items-center">
             Average Duration
-            <span class="badge bg-primary rounded-pill">{{ "{:.0f}".format(avg_duration) }} min</span>
+            <span class="badge bg-primary rounded-pill">{{ "%.0f"|format(avg_duration) }} min</span>
           </div>
           <div class="list-group-item d-flex justify-content-between align-items-center">
             Revenue per KM
-            <span class="badge bg-success rounded-pill">${{ "{:.2f}".format(revenue_per_km) }}/km</span>
+            <span class="badge bg-success rounded-pill">${{ "%.2f"|format(revenue_per_km) }}/km</span>
           </div>
         </div>
       </div>

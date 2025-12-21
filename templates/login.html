@@ -1,115 +1,199 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Connection – Driver Login</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connection – Driver Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #ecf0f1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #74b9ff, #0984e3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
 
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-            width: 90%;
-            max-width: 380px;
-            text-align: center;
-        }
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      animation: fadeIn 0.35s ease-in-out;
+    }
 
-        h2 {
-            margin-bottom: 20px;
-            color: #2d3436;
-        }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-        input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            border: 1px solid #b2bec3;
-            font-size: 15px;
-        }
+    h2 {
+      margin-bottom: 20px;
+      color: #2d3436;
+      font-weight: bold;
+    }
 
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #0984e3;
-            color: white;
-            font-size: 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+    .input-group {
+      position: relative;
+      margin-bottom: 16px;
+    }
 
-        button:hover {
-            background: #74b9ff;
-        }
+    .input-group input {
+      width: 100%;
+      padding: 12px 40px 12px 12px;
+      border-radius: 8px;
+      border: 1px solid #b2bec3;
+      font-size: 15px;
+      outline: none;
+      transition: 0.2s;
+    }
 
-        .footer {
-            margin-top: 12px;
-            font-size: 14px;
-        }
+    .input-group input:focus {
+      border-color: #0984e3;
+      box-shadow: 0 0 0 2px rgba(9,132,227,0.2);
+    }
 
-        a {
-            color: #0984e3;
-            text-decoration: none;
-            font-weight: bold;
-        }
-    </style>
+    .input-group i {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #636e72;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #0984e3;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.25s;
+    }
+
+    button:hover {
+      background: #74b9ff;
+      transform: scale(1.02);
+    }
+
+    .footer {
+      margin-top: 14px;
+      font-size: 14px;
+    }
+
+    a {
+      color: #0984e3;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .error, .success {
+      margin-top: 12px;
+      font-size: 14px;
+      display: none;
+      padding: 10px;
+      border-radius: 6px;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .error {
+      background: #ffe5e5;
+      color: #d63031;
+    }
+
+    .success {
+      background: #e5fff5;
+      color: #00b894;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="card">
+    <h2>Driver Login</h2>
 
-<div class="card">
-    <h2>CONNECTION – DRIVER LOGIN</h2>
+    <div class="input-group">
+      <input id="phone" type="tel" placeholder="Phone Number" required>
+      <i class="fa fa-phone"></i>
+    </div>
 
-    <input type="text" id="phone" placeholder="Phone Number" required>
-    <input type="password" id="password" placeholder="Password" required>
+    <div class="input-group">
+      <input id="password" type="password" placeholder="Password" required>
+      <i class="fa fa-lock"></i>
+    </div>
 
-    <button onclick="login()">Login</button>
+    <button id="loginBtn" onclick="login()">Login</button>
+
+    <div id="error" class="error"></div>
+    <div id="success" class="success"></div>
 
     <div class="footer">
-        Don't have an account?
-        <a href="/driver/signup">Sign Up</a>
+      Don’t have an account?
+      <a href="/driver/signup">Sign Up</a>
     </div>
-</div>
+  </div>
 
+  <!-- Font Awesome for icons -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
 
-<script>
-async function login() {
-    const phone = document.getElementById("phone").value.trim();
-    const password = document.getElementById("password").value.trim();
+  <script>
+    async function login() {
+      const phone = document.getElementById("phone").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorBox = document.getElementById("error");
+      const successBox = document.getElementById("success");
+      const loginBtn = document.getElementById("loginBtn");
 
-    if (!phone || !password) {
-        alert("Please fill all fields");
+      errorBox.style.display = "none";
+      successBox.style.display = "none";
+
+      if (!phone || !password) {
+        errorBox.innerText = "⚠️ Please fill all fields.";
+        errorBox.style.display = "block";
         return;
+      }
+
+      loginBtn.innerText = "Logging in...";
+      loginBtn.disabled = true;
+
+      try {
+        const res = await fetch("/driver/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone, password })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.status !== "success") {
+          errorBox.innerText = "⚠️ Login failed: " + (data.error || "Unknown error");
+          errorBox.style.display = "block";
+          loginBtn.innerText = "Login";
+          loginBtn.disabled = false;
+          return;
+        }
+
+        successBox.innerText = "✅ Login successful! Redirecting...";
+        successBox.style.display = "block";
+
+        setTimeout(() => {
+          window.location.href = "/driver/home";
+        }, 1200);
+
+      } catch (err) {
+        errorBox.innerText = "⚠️ Network error. Try again.";
+        errorBox.style.display = "block";
+        loginBtn.innerText = "Login";
+        loginBtn.disabled = false;
+      }
     }
-
-    const res = await fetch("/driver/login", {   // <-- FIXED
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password })
-    });
-
-    const data = await res.json();
-
-    if (data.status === "success") {
-        window.location.href = "/driver/home";
-    } else {
-        alert("Login failed: " + (data.error || "unknown_error"));
-    }
-}
-</script>
-
+  </script>
 </body>
 </html>

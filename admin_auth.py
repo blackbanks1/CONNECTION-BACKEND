@@ -9,9 +9,16 @@ This module handles admin user authentication including:
 """
 
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import create_access_token,unset_jwt_cookies, jwt_required, get_jwt_identity, set_access_cookies, get_csrf_token
+from flask_jwt_extended import (
+    create_access_token,
+    unset_jwt_cookies,
+    jwt_required,
+    get_jwt_identity,
+    set_access_cookies,
+    get_csrf_token
+)
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import timedelta
+from datetime import datetime, timedelta
 import re
 
 # Initialize Blueprint
@@ -20,19 +27,19 @@ admin_auth_bp = Blueprint('admin_auth', __name__, url_prefix='/api/admin/auth')
 
 class AdminAuthService:
     """Service class for admin authentication operations"""
-    
+
     # In a real application, this would use a database
     # For now, we'll use an in-memory store (replace with actual database)
     admins = {}
-    
+
     @staticmethod
-    def is_valid_email(email):
+    def is_valid_email(email: str) -> bool:
         """Validate email format"""
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(pattern, email) is not None
-    
+
     @staticmethod
-    def is_valid_password(password):
+    def is_valid_password(password: str):
         """Validate password strength"""
         if len(password) < 8:
             return False, "Password must be at least 8 characters long"
@@ -41,128 +48,94 @@ class AdminAuthService:
         if not any(char.isdigit() for char in password):
             return False, "Password must contain at least one digit"
         return True, "Password is valid"
-    
+
     @classmethod
-    def register_admin(cls, email, password, username):
+    def register_admin(cls, email: str, password: str, username: str):
         """
-        Register a new admin user
-        
-        Args:
-            email (str): Admin email address
-            password (str): Admin password
-            username (str): Admin username
-            
-        Returns:
-            dict: Response with status and message
+        Register a new admin user.
         """
-        # Validate input
         if not email or not password or not username:
-            return {
+            return jsonify({
                 'success': False,
                 'message': 'Email, password, and username are required'
-            }, 400
-        
-        # Check email format
+            }), 400
+
         if not cls.is_valid_email(email):
-            return {
+            return jsonify({
                 'success': False,
                 'message': 'Invalid email format'
-            }, 400
-        
-        # Validate password strength
+            }), 400
+
         is_valid, message = cls.is_valid_password(password)
         if not is_valid:
-            return {
-                'success': False,
-                'message': message
-            }, 400
-        
-        # Check if email already exists
+            return jsonify({'success': False, 'message': message}), 400
+
         if email in cls.admins:
-            return {
+            return jsonify({
                 'success': False,
                 'message': 'Email already registered'
-            }, 409
-        
-        # Hash password and store admin
+            }), 409
+
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         cls.admins[email] = {
             'username': username,
             'password': hashed_password,
             'email': email,
-            'created_at': str(__import__('datetime').datetime.utcnow())
+            'created_at': datetime.utcnow().isoformat()
         }
-        
-        return {
+
+        return jsonify({
             'success': True,
             'message': 'Admin registered successfully',
             'data': {
                 'email': email,
                 'username': username
             }
-        }, 201
-    
+        }), 201
     @classmethod
     def login_admin(cls, email, password):
         """
-        Authenticate admin and generate access token
-        
-        Args:
-            email (str): Admin email address
-            password (str): Admin password
-            
-        Returns:
-            dict: Response with access token or error message
+        Authenticate admin and generate access token.
         """
-        # Validate input
         if not email or not password:
             return {
                 'success': False,
                 'message': 'Email and password are required'
             }, 400
-        
-        # Check if admin exists
+
         if email not in cls.admins:
             return {
                 'success': False,
                 'message': 'Invalid email or password'
             }, 401
-        
+
         admin = cls.admins[email]
-        
-        # Verify password
+
         if not check_password_hash(admin['password'], password):
             return {
                 'success': False,
                 'message': 'Invalid email or password'
             }, 401
-        
+
         # Generate access token (expires in 24 hours)
         access_token = create_access_token(
             identity=email,
             expires_delta=timedelta(hours=24)
         )
-        
-        response = jsonify({
+
+        response = {
             'success': True,
             'message': 'Login successful',
+            'token': access_token,
             'csrf_token': get_csrf_token(access_token)
-        })
-        
-        set_access_cookies(response, access_token)
+        }
+
         return response, 200
 
-    
     @classmethod
     def logout_admin(cls, email):
         """
-        Logout admin (token invalidation happens on client side)
-        
-        Args:
-            email (str): Admin email address
-            
-        Returns:
-            dict: Logout confirmation message
+        Logout admin (token invalidation happens on client side).
         """
         return {
             'success': True,
@@ -170,39 +143,29 @@ class AdminAuthService:
         }, 200
 
 
-# Routes
+# -------------------- Routes --------------------
 
 @admin_auth_bp.route('/register', methods=['POST'])
 def register():
     """
-    Register a new admin user
-    
-    Expected JSON payload:
-    {
-        "email": "admin@example.com",
-        "password": "SecurePass123",
-        "username": "admin_user"
-    }
-    
-    Returns:
-        JSON response with registration status
+    Register a new admin user.
     """
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({
                 'success': False,
                 'message': 'Request body must be JSON'
             }), 400
-        
+
         email = data.get('email', '').strip()
         password = data.get('password', '')
         username = data.get('username', '').strip()
-        
+
         response, status_code = AdminAuthService.register_admin(email, password, username)
-        return jsonify(response), status_code
-    
+        return response, status_code
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -214,59 +177,47 @@ def register():
 @admin_auth_bp.route('/login', methods=['POST'])
 def login():
     """
-    Login admin user and return access token
-    
-    Expected JSON payload:
-    {
-        "email": "admin@example.com",
-        "password": "SecurePass123"
-    }
-    
-    Returns:
-        JSON response with access token
+    Login admin user and return access token.
     """
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({
                 'success': False,
                 'message': 'Request body must be JSON'
             }), 400
-        
+
         email = data.get('email', '').strip()
         password = data.get('password', '')
-        
+
         response, status_code = AdminAuthService.login_admin(email, password)
         return jsonify(response), status_code
-    
+
     except Exception as e:
         return jsonify({
             'success': False,
             'message': 'An error occurred during login',
             'error': str(e)
         }), 500
-
+    
+# -------------------- Logout --------------------
 @admin_auth_bp.route('/logout', methods=['POST'])
-@jwt_required()  # uses cookie automatically
+@jwt_required()  # requires a valid JWT in cookie or header
 def logout():
     """
-    Logout admin user
+    Logout admin user.
 
-    Requires: Valid JWT token in HTTP-only cookie
-
-    Returns:
-        JSON response confirming logout
+    Requires: Valid JWT token in HTTP-only cookie.
     """
     try:
         current_admin = get_jwt_identity()
-        
-        # Clear JWT cookies
+
         response = jsonify({
             'success': True,
             'message': f'Admin {current_admin} logged out successfully'
         })
-        unset_jwt_cookies(response)
+        unset_jwt_cookies(response)  # clear JWT cookies
         return response, 200
 
     except Exception as e:
@@ -276,16 +227,13 @@ def logout():
             'error': str(e)
         }), 500
 
+
+# -------------------- Verify Token --------------------
 @admin_auth_bp.route('/verify', methods=['GET'])
 @jwt_required()
 def verify_token():
     """
-    Verify if the provided JWT token is valid
-    
-    Requires: Valid JWT token in Authorization header
-    
-    Returns:
-        JSON response with admin identity
+    Verify if the provided JWT token is valid.
     """
     try:
         current_admin = get_jwt_identity()
@@ -296,7 +244,7 @@ def verify_token():
                 'email': current_admin
             }
         }), 200
-    
+
     except Exception as e:
         return jsonify({
             'success': False,

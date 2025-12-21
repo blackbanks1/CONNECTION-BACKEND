@@ -2,10 +2,19 @@ import os
 
 class Config:
     # -------------------------
+    # ENVIRONMENT
+    # -------------------------
+    ENV = os.getenv("FLASK_ENV", "development")
+    TESTING_MODE = os.getenv("TESTING_MODE", "false").lower() == "true"
+
+    # -------------------------
     # GENERAL APP CONFIG
     # -------------------------
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
+
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
+    if ENV == "production" and JWT_SECRET_KEY == "dev-jwt-secret":
+        raise RuntimeError("JWT_SECRET_KEY must be set in production")
 
     # -------------------------
     # DATABASE CONFIG
@@ -27,23 +36,22 @@ class Config:
     # -------------------------
     # FORCE HTTPS IN PRODUCTION
     # -------------------------
-    if os.environ.get("FLASK_ENV") == "production":
+    if ENV == "production":
         PREFERRED_URL_SCHEME = "https"
 
     # -------------------------
     # SOCKET.IO CONFIG
     # -------------------------
-    CORS_ALLOWED_ORIGINS = "*"
+    CORS_ALLOWED_ORIGINS = [
+        origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    ]
 
     # -------------------------
     # ROUTING API KEYS
     # -------------------------
-
-    # ✅ ADD THIS LINE (Your real GraphHopper Key)
-    GRAPHHOPPER_KEY = os.getenv(
-        "GRAPHHOPPER_KEY",
-        "4383fd4a-b9a1-4685-93e3-4070ccc1849b"
-    )
+    GRAPHHOPPER_KEY = os.getenv("GRAPHHOPPER_KEY", "dev-graphhopper-key")
+    if ENV == "production" and GRAPHHOPPER_KEY == "dev-graphhopper-key":
+        raise RuntimeError("GRAPHHOPPER_KEY must be set in production")
 
     # -------------------------
     # TRIAL PERIOD SETTINGS
@@ -54,8 +62,10 @@ class Config:
     # PAYMENT & PRICING (future)
     # -------------------------
     DAILY_PASS_PRICE_RWF = int(os.getenv("DAILY_PASS_PRICE_RWF", 500))
-    
-    # JWT cookie support (REQUIRED)
+
+    # -------------------------
+    # JWT cookie support
+    # -------------------------
     JWT_TOKEN_LOCATION = ["cookies"]
-    JWT_COOKIE_SECURE = False   # True only in HTTPS production
-    JWT_COOKIE_CSRF_PROTECT = False
+    JWT_COOKIE_SECURE = ENV == "production"
+    JWT_COOKIE_CSRF_PROTECT = ENV == "production"

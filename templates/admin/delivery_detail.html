@@ -6,7 +6,7 @@
   <h4 class="mb-0">Delivery Details</h4>
   <div>
     {% if delivery.status != 'delivered' %}
-    <a href="/?join={{ delivery.id }}" target="_blank" class="btn btn-outline-primary">
+    <a href="{{ url_for('track', join=delivery.id) }}" target="_blank" class="btn btn-outline-primary">
       <i class="fa-solid fa-eye"></i> View Live
     </a>
     {% endif %}
@@ -15,6 +15,7 @@
 </div>
 
 <div class="row g-4">
+  <!-- Left column: Basic Info -->
   <div class="col-md-6">
     <div class="card shadow-sm">
       <div class="card-body">
@@ -26,53 +27,65 @@
           </tr>
           <tr>
             <th>Status</th>
-            <td><span class="badge bg-{{ 'success' if delivery.status == 'delivered' else 'warning' }}">{{ delivery.status }}</span></td>
+            <td>
+              <span class="badge bg-{{ 'success' if delivery.status == 'delivered' else 'warning' }}">
+                {{ delivery.status }}
+              </span>
+            </td>
           </tr>
           <tr>
             <th>Started</th>
-            <td>{{ delivery.start_time.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>{{ delivery.start_time_str }}</td>
           </tr>
           {% if delivery.confirmed_at %}
           <tr>
             <th>Delivered</th>
-            <td>{{ delivery.confirmed_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>{{ delivery.confirmed_at_str }}</td>
           </tr>
           {% endif %}
           <tr>
-            <th>Driver ID</th>
-            <td>{{ delivery.driver_id }}</td>
+            <th>Driver</th>
+            <td>{{ delivery.driver.name if delivery.driver else delivery.driver_id }}</td>
           </tr>
           <tr>
-            <th>Receiver ID</th>
-            <td>{{ delivery.receiver_id }}</td>
+            <th>Receiver</th>
+            <td>{{ delivery.receiver.name if delivery.receiver else delivery.receiver_id }}</td>
           </tr>
           <tr>
             <th>Price</th>
-            <td>${{ "{:.2f}".format(delivery.price or 0) }}</td>
+            <td>${{ "%.2f"|format(delivery.price or 0) }}</td>
           </tr>
           <tr>
             <th>Payment</th>
-            <td><span class="badge bg-{{ 'success' if delivery.payment_status == 'paid' else 'warning' }}">{{ delivery.payment_status or 'pending' }}</span></td>
+            <td>
+              <span class="badge bg-{{ 'success' if delivery.payment_status == 'paid' else 'warning' }}">
+                {{ delivery.payment_status or 'pending' }}
+              </span>
+            </td>
           </tr>
         </table>
       </div>
     </div>
   </div>
 
+  <!-- Right column: Consent and Tokens -->
   <div class="col-md-6">
     <div class="card shadow-sm">
       <div class="card-body">
         <h5 class="card-title">Consent Status</h5>
         <div class="mb-3">
-          <span class="badge bg-{{ 'success' if delivery.receiver_consented else 'danger' }}">{{ 'Consented' if delivery.receiver_consented else 'Not Consented' }}</span>
-          {% if delivery.consent_ts %}
-          <small class="text-muted ms-2">on {{ delivery.consent_ts.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+          <span class="badge bg-{{ 'success' if delivery.receiver_consented else 'danger' }}">
+            {{ 'Consented' if delivery.receiver_consented else 'Not Consented' }}
+          </span>
+          {% if delivery.consent_ts_str %}
+          <small class="text-muted ms-2">on {{ delivery.consent_ts_str }}</small>
           {% endif %}
         </div>
 
         {% if delivery.receiver_consented %}
         <form action="{{ url_for('admin.revoke_consent', delivery_id=delivery.id) }}" method="POST" class="d-inline">
-          <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Are you sure you want to revoke consent?')">
+          <button type="submit" class="btn btn-warning btn-sm"
+                  onclick="return confirm('Are you sure you want to revoke consent?')">
             Revoke Consent
           </button>
         </form>
@@ -89,10 +102,11 @@
           <li class="list-group-item d-flex justify-content-between align-items-center">
             <div>
               <code>{{ t.token }}</code><br />
-              <small class="text-muted">Expires: {{ t.expires_at.strftime('%Y-%m-%d %H:%M') }}</small>
+              <small class="text-muted">Expires: {{ t.expires_at_str }}</small>
             </div>
             <div>
-              <a class="btn btn-sm btn-outline-secondary" href="/?join={{ t.token }}" target="_blank">Open</a>
+              <a class="btn btn-sm btn-outline-secondary"
+                 href="{{ url_for('track', join=t.token) }}" target="_blank">Open</a>
             </div>
           </li>
           {% endfor %}
@@ -105,6 +119,7 @@
   </div>
 </div>
 
+<!-- Feedback Section -->
 <div class="mt-4">
   <div class="card shadow-sm">
     <div class="card-body">
@@ -113,8 +128,8 @@
         {% for fb in feedback %}
         <div class="border-bottom py-3">
           <div class="d-flex justify-content-between">
-            <div class="small text-muted">{{ fb.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
-            <div class="small text-muted">Receiver: {{ fb.receiver_id }}</div>
+            <div class="small text-muted">{{ fb.created_at_str }}</div>
+            <div class="small text-muted">Receiver: {{ fb.receiver.name if fb.receiver else fb.receiver_id }}</div>
           </div>
           <div class="mt-2">{{ fb.feedback }}</div>
         </div>
@@ -126,9 +141,13 @@
   </div>
 </div>
 
+<!-- Delete Delivery -->
 <div class="mt-3">
   <form action="{{ url_for('admin.delete_delivery', delivery_id=delivery.id) }}" method="POST" class="d-inline">
-    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure? This will delete all delivery data.')">Delete Delivery</button>
+    <button type="submit" class="btn btn-danger"
+            onclick="return confirm('Are you sure? This will delete all delivery data.')">
+      Delete Delivery
+    </button>
   </form>
 </div>
 {% endblock %}

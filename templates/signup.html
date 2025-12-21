@@ -1,109 +1,129 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Connection – Driver Signup</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connection – Driver Signup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #dfe6e9, #b2bec3);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #dfe6e9, #b2bec3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
 
-        .card {
-            background: white;
-            padding: 32px;
-            border-radius: 14px;
-            box-shadow: 0 4px 18px rgba(0,0,0,0.12);
-            width: 92%;
-            max-width: 400px;
-            text-align: center;
-            animation: fadeIn 0.35s ease-in-out;
-        }
+    .card {
+      background: white;
+      padding: 32px;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.12);
+      width: 92%;
+      max-width: 420px;
+      text-align: center;
+      animation: fadeIn 0.35s ease-in-out;
+    }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-        h2 {
-            margin-bottom: 25px;
-            color: #2d3436;
-            font-weight: bold;
-        }
+    h2 {
+      margin-bottom: 25px;
+      color: #2d3436;
+      font-weight: bold;
+    }
 
-        input {
-            width: 100%;
-            padding: 13px;
-            margin-bottom: 16px;
-            border-radius: 8px;
-            border: 1px solid #b2bec3;
-            font-size: 15px;
-            outline: none;
-            transition: 0.2s;
-        }
+    label {
+      display: block;
+      text-align: left;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: #636e72;
+    }
 
-        input:focus {
-            border-color: #0984e3;
-            box-shadow: 0 0 0 2px rgba(9,132,227,0.2);
-        }
+    input {
+      width: 100%;
+      padding: 13px;
+      margin-bottom: 18px;
+      border-radius: 8px;
+      border: 1px solid #b2bec3;
+      font-size: 15px;
+      outline: none;
+      transition: 0.2s;
+    }
 
-        button {
-            width: 100%;
-            padding: 14px;
-            background: #0984e3;
-            color: white;
-            font-size: 17px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.25s;
-        }
+    input:focus {
+      border-color: #0984e3;
+      box-shadow: 0 0 0 2px rgba(9,132,227,0.2);
+    }
 
-        button:hover {
-            background: #74b9ff;
-        }
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #0984e3;
+      color: white;
+      font-size: 17px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.25s;
+    }
 
-        .footer {
-            margin-top: 14px;
-            font-size: 15px;
-        }
+    button:hover {
+      background: #74b9ff;
+      transform: scale(1.02);
+    }
 
-        a {
-            color: #0984e3;
-            text-decoration: none;
-            font-weight: bold;
-        }
+    .footer {
+      margin-top: 14px;
+      font-size: 15px;
+    }
 
-        .error {
-            margin-top: 10px;
-            color: #d63031;
-            font-size: 14px;
-            display: none;
-        }
-        .success {
-            margin-top: 10px;
-            color: #00b894;
-            font-size: 14px;
-            display: none;
-        }
-    </style>
+    a {
+      color: #0984e3;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .error, .success {
+      margin-top: 12px;
+      font-size: 14px;
+      display: none;
+      padding: 10px;
+      border-radius: 6px;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .error {
+      background: #ffe5e5;
+      color: #d63031;
+    }
+
+    .success {
+      background: #e5fff5;
+      color: #00b894;
+    }
+  </style>
 </head>
 
 <body>
-
-<div class="card">
+  <div class="card">
     <h2>Create Your Driver Account</h2>
 
+    <label for="username">Username</label>
     <input id="username" type="text" placeholder="Choose a Username" required>
-    <input id="phone" type="text" placeholder="Phone Number" required>
-    <input id="password" type="password" placeholder="Create Password" required>
+
+    <label for="phone">Phone Number</label>
+    <input id="phone" type="tel" placeholder="Phone Number" required>
+
+    <label for="password">Password</label>
+    <input id="password" type="password" placeholder="Create Password" autocomplete="new-password" required>
 
     <button onclick="signup()">Create Account</button>
 
@@ -111,57 +131,61 @@
     <div id="success" class="success"></div>
 
     <div class="footer">
-        Already have an account?
-        <a href="/driver/login">Login</a>
+      Already have an account?
+      <a href="/driver/login">Login</a>
     </div>
-</div>
+  </div>
 
-<script>
-async function signup() {
-    const username = document.getElementById("username").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const password = document.getElementById("password").value.trim();
+  <script>
+    async function signup() {
+      const username = document.getElementById("username").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const password = document.getElementById("password").value.trim();
 
-    const errorBox = document.getElementById("error");
-    const successBox = document.getElementById("success");
-    errorBox.style.display = "none";
-    successBox.style.display = "none";
+      const errorBox = document.getElementById("error");
+      const successBox = document.getElementById("success");
+      errorBox.style.display = "none";
+      successBox.style.display = "none";
 
-    if (!username || !phone || !password) {
-        errorBox.innerText = "All fields are required.";
+      if (!username || !phone || !password) {
+        errorBox.innerText = "⚠️ All fields are required.";
         errorBox.style.display = "block";
         return;
-    }
+      }
 
-    try {
-        const res = await fetch("/driver/signup", {     // <-- FIXED ROUTE
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, phone, password })
+      if (password.length < 6) {
+        errorBox.innerText = "⚠️ Password must be at least 6 characters.";
+        errorBox.style.display = "block";
+        return;
+      }
+
+      try {
+        const res = await fetch("/driver/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, phone, password })
         });
 
         const data = await res.json();
 
         if (!res.ok) {
-            errorBox.innerText = data.error || "Signup failed.";
-            errorBox.style.display = "block";
-            return;
+          errorBox.innerText = data.error || "Signup failed.";
+          errorBox.style.display = "block";
+          return;
         }
 
-        successBox.innerText = "Account created successfully! Redirecting...";
+        successBox.innerText = "✅ Account created successfully! Redirecting...";
         successBox.style.display = "block";
 
         setTimeout(() => {
-            window.location.href = "/driver/login";
-        }, 1200);
+          window.location.href = "/driver/login";
+        }, 1500);
 
-    } catch (err) {
-        errorBox.innerText = "Network error. Try again.";
+      } catch (err) {
+        errorBox.innerText = "⚠️ Network error. Try again.";
         errorBox.style.display = "block";
+      }
     }
-}
-
-</script>
-
+  </script>
 </body>
 </html>

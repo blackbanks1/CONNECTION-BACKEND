@@ -1,163 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Connection – Track Delivery</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Connection – Track Delivery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 
-    <style>
-        body {
-            margin: 0;
-            font-family: "Inter", sans-serif;
-            background: #f3f4f6;
-        }
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-        .header {
-            padding: 12px;
-            background: white;
-            display: flex;
-            align-items: center;
-            border-bottom: 1px solid #ddd;
-        }
+  <style>
+    body {
+      margin: 0;
+      font-family: "Inter", sans-serif;
+      background: #f3f4f6;
+      color: #333;
+    }
 
-        .logo {
-            height: 36px;
-            margin-right: 12px;
-        }
+    /* Header */
+    .header {
+      padding: 12px 18px;
+      background: white;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
 
-        .title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #333;
-        }
+    .logo {
+      height: 36px;
+      margin-right: 12px;
+    }
 
-        .map-card {
-            margin: 14px auto;
-            width: 92%;
-            max-width: 900px;
-            height: 70vh;
-            background: white;
-            border-radius: 18px;
-            overflow: hidden;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-            display: none;
-            opacity: 0;
-            transition: opacity 0.6s ease;
-        }
+    .title {
+      font-size: 20px;
+      font-weight: 600;
+    }
 
-        #map {
-            width: 100%;
-            height: 100%;
-        }
+    /* Map card */
+    .map-card {
+      margin: 14px auto;
+      width: 92%;
+      max-width: 900px;
+      height: 70vh;
+      background: white;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      display: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      position: relative; /* ensure overlay elements position correctly */
+    }
 
-        .fade-in {
-            opacity: 1 !important;
-        }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
 
-        .permission-box {
-            margin: 40px auto;
-            padding: 22px;
-            background: white;
-            width: 90%;
-            max-width: 380px;
-            text-align: center;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
+    .fade-in {
+      opacity: 1 !important;
+    }
 
-        .permission-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: #333;
-        }
+    /* Permission box */
+    .permission-box {
+      margin: 40px auto;
+      padding: 22px;
+      background: white;
+      width: 90%;
+      max-width: 380px;
+      text-align: center;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      animation: fadeInUp 0.6s ease;
+    }
 
-        .btn {
-            margin-top: 16px;
-            padding: 12px 20px;
-            width: 100%;
-            background: #2563eb;
-            border-radius: 8px;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 600;
-        }
+    .permission-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
 
-        .stats-box {
-    position: absolute;      /* ensure absolute positioning inside map */
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 18px;
-    min-width: 220px;
-    min-height: 36px;
-    background: rgba(255,255,255,0.98);
-    border-radius: 12px;
-    padding: 10px 16px;
-    box-shadow: 0 10px 30px rgba(12,36,80,0.12);
-    font-weight: 700;
-    display: none;
-    z-index: 9999;
-    text-align: center;
-    font-size: 15px;          /* default font size */
-}
+    .btn {
+      margin-top: 16px;
+      padding: 12px 20px;
+      width: 100%;
+      background: #2563eb;
+      border-radius: 8px;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background 0.2s ease;
+    }
 
-/* Small devices */
-@media (max-width: 450px) {
+    .btn:hover {
+      background: #1e4ed8;
+    }
+
+    /* Stats box */
     .stats-box {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 18px;
+      min-width: 220px;
+      min-height: 36px;
+      background: rgba(255,255,255,0.98);
+      border-radius: 12px;
+      padding: 10px 16px;
+      box-shadow: 0 10px 30px rgba(12,36,80,0.12);
+      font-weight: 700;
+      display: none;
+      z-index: 9999;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 450px) {
+      .stats-box {
         bottom: 8px;
         min-width: 180px;
         padding: 8px 12px;
         font-size: 13px;
+      }
     }
-}
 
-/* Ultra small devices */
-@media (max-width: 350px) {
-    .stats-box {
+    @media (max-width: 350px) {
+      .stats-box {
         bottom: 6px;
         min-width: 160px;
         padding: 6px 10px;
         font-size: 12px;
+      }
     }
-}
 
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 
-
-    </style>
-
-    <!-- Load libraries FIRST -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Load libraries FIRST -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 
 <body>
-
-<!-- HEADER -->
-<div class="header">
-    <img src="/static/logo.png" class="logo">
+  <!-- HEADER -->
+  <div class="header">
+    <img src="/static/logo.png" class="logo" onerror="this.src='/static/placeholder.png'">
     <div class="title">Connection – Live Tracking</div>
-</div>
+  </div>
 
-<!-- Location Permission Box -->
-<div id="permBox" class="permission-box">
+  <!-- Location Permission Box -->
+  <div id="permBox" class="permission-box">
     <div class="permission-title">Location Required</div>
     <p>We need your location to calculate real-time distance and ETA.</p>
     <button class="btn" onclick="requestLocation()">Allow Location</button>
-</div>
+  </div>
 
-<!-- Map container -->
-<div id="mapCard" class="map-card">
-    <div id="map"><div id="stats" class="stats-box"></div></div>
-    
-</div>
-
-<!-- Realtime stats -->
-
+  <!-- Map container -->
+  <div id="mapCard" class="map-card">
+    <div id="map"></div>
+    <div id="stats" class="stats-box"></div>
+    <!-- Delivery Over button (hidden until active session) -->
+    <button id="endBtn" class="btn" style="position:absolute; top:12px; right:12px; width:auto; padding:8px 14px; font-size:13px; display:none;">
+      Mark Delivery Over
+    </button>
+  </div>
 
 <!-- ============================================================
      RECEIVER JAVASCRIPT — MOVED TO THE BOTTOM (FIX)
@@ -170,7 +185,6 @@
 /* --- State --- */
 let deliveryId = "{{ delivery_id }}";  // Replace with backend variable
 console.log("[Receiver] deliveryId =", deliveryId);
-
 
 let map = null;
 let driverMarker = null;
@@ -186,67 +200,80 @@ let socket;
    SOCKET INIT
 =========================== */
 function initSocket() {
-    socket = io(window.location.origin, {
-        transports: ["websocket", "polling"]
-    });
+  socket = io(window.location.origin, {
+    transports: ["websocket", "polling"]
+  });
 
-    socket.on("connect", () => {
-        console.log("[Receiver] Socket connected:", socket.id);
-        joinRoom();
-    });
+  socket.on("connect", () => {
+    console.log("[Receiver] Socket connected:", socket.id);
+    joinRoom();
+    // Show the "Mark Delivery Over" button once connected to a delivery
+    const endBtn = document.getElementById("endBtn");
+    if (endBtn && deliveryId) {
+      endBtn.style.display = "block";
+    }
+  });
 
-    socket.on("connect_error", e => console.error("[Receiver] Socket error:", e));
-    socket.on("disconnect", () => console.log("[Receiver] Socket disconnected"));
+  socket.on("connect_error", e => console.error("[Receiver] Socket error:", e));
+  socket.on("disconnect", () => console.log("[Receiver] Socket disconnected"));
 }
 
 initSocket();
 
-// --- When receiving driver updates ---
+/* ===========================
+   DRIVER UPDATES
+=========================== */
 socket.on("driver_update", (data) => {
-    if (!data || data.lat === undefined || data.lng === undefined) return;
+  if (!data || data.lat === undefined || data.lng === undefined) return;
 
-    const lat = parseFloat(data.lat);
-    const lng = parseFloat(data.lng);
+  const lat = parseFloat(data.lat);
+  const lng = parseFloat(data.lng);
 
-    if (!driverMarker && map) {
-        // Create a custom icon for the driver
-        const driverIcon = L.icon({
-            iconUrl: "/static/driver.png", // your driver icon
-            iconSize: [20, 20],            // size of the icon
-            iconAnchor: [12, 12],          // point of the icon which will correspond to marker's location
-            popupAnchor: [0, -10]
-        });
-
-        driverMarker = L.marker([lat, lng], { title: "Driver", icon: driverIcon }).addTo(map);
-    } else if (driverMarker) {
-        moveMarkerSmooth(driverMarker, { lat, lng }, 800);
-    }
-
-    // Update route and map bounds
-    if (receiverMarker) {
-        const rPos = receiverMarker.getLatLng();
-        requestRoute({ lat, lng }, { lat: rPos.lat, lng: rPos.lng });
-        fitMapToMarkers();
-    }
-});
-        
-    // Receiver updates (other devices tracking same delivery)
-    socket.on("receiver_update", (data) => {
-        if (!data || data.lat === undefined || data.lng === undefined) return;
-        const lat = parseFloat(data.lat);
-        const lng = parseFloat(data.lng);
-
-        if (!receiverMarker && map) receiverMarker = L.marker([lat, lng], { title: "You" }).addTo(map);
-        else moveMarkerSmooth(receiverMarker, { lat, lng }, 800);
-
-        if (driverMarker) {
-            const dPos = driverMarker.getLatLng();
-            requestRoute({ lat: dPos.lat, lng: dPos.lng }, { lat, lng });
-            fitMapToMarkers();
-        } else if (map) {
-            map.flyTo([lat, lng], 14);
-        }
+  if (!driverMarker && map) {
+    // Custom driver icon
+    const driverIcon = L.icon({
+      iconUrl: "/static/driver.png",
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      popupAnchor: [0, -10]
     });
+
+    driverMarker = L.marker([lat, lng], { title: "Driver", icon: driverIcon }).addTo(map);
+  } else if (driverMarker) {
+    moveMarkerSmooth(driverMarker, { lat, lng }, 800);
+  }
+
+  // Update route and bounds if receiver marker exists
+  if (receiverMarker) {
+    const rPos = receiverMarker.getLatLng();
+    requestRoute({ lat, lng }, { lat: rPos.lat, lng: rPos.lng });
+    fitMapToMarkers();
+  }
+});
+
+/* ===========================
+   RECEIVER UPDATES
+=========================== */
+socket.on("receiver_update", (data) => {
+  if (!data || data.lat === undefined || data.lng === undefined) return;
+
+  const lat = parseFloat(data.lat);
+  const lng = parseFloat(data.lng);
+
+  if (!receiverMarker && map) {
+    receiverMarker = L.marker([lat, lng], { title: "You" }).addTo(map);
+  } else {
+    moveMarkerSmooth(receiverMarker, { lat, lng }, 800);
+  }
+
+  if (driverMarker) {
+    const dPos = driverMarker.getLatLng();
+    requestRoute({ lat: dPos.lat, lng: dPos.lng }, { lat, lng });
+    fitMapToMarkers();
+  } else if (map) {
+    map.flyTo([lat, lng], 14);
+  }
+});
 
 /* ===========================
    JOIN ROOM
@@ -257,7 +284,12 @@ function joinRoom() {
     console.log("[Receiver] Joining room:", deliveryId);
     socket.emit("join_delivery", { delivery_id: deliveryId, role: "receiver" });
 
-    socket.on("join_delivery", (data) => console.log("[Receiver] Successfully joined:", data));
+    socket.on("join_delivery", (data) => {
+  console.log("[Receiver] Successfully joined:", data);
+  // ✅ Show the button only now
+  const endBtn = document.getElementById("endBtn");
+  if (endBtn) endBtn.style.display = "block";
+});
     
 }
 

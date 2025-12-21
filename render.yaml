@@ -10,3 +10,9 @@ services:
     envVars:
       - key: FLASK_ENV
         value: production
+      - key: DATABASE_URL
+        value: postgresql://postgres:password@db:5432/appdb
+      - key: SECRET_KEY
+        value: super-secret-key
+      - key: GRAPHHOPPER_API_KEY
+        value: your-graphhopper-key

@@ -4,11 +4,14 @@
   "description": "SCSS build for track.html styling",
   "private": true,
   "devDependencies": {
-    "sass": "^1.70.0"
+    "sass": "^1.70.0",
+    "rimraf": "^5.0.0"
   },
   "scripts": {
     "build-css": "sass scss:static/css --no-source-map --style=expanded",
     "build-css-min": "sass scss:static/css --no-source-map --style=compressed",
-    "watch-css": "sass --watch scss:static/css --no-source-map --style=expanded"
+    "watch-css": "sass --watch scss:static/css --no-source-map --style=expanded",
+    "clean": "rimraf static/css/*",
+    "build": "npm run build-css-min"
   }
 }

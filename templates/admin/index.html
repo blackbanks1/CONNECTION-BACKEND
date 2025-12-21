@@ -11,6 +11,7 @@
   </div>
 </div>
 
+<!-- Stats cards -->
 <div class="row g-3 mb-4">
   <div class="col-md-3">
     <div class="card stats-card bg-white shadow-sm border-0">
@@ -25,6 +26,7 @@
       </div>
     </div>
   </div>
+
   <div class="col-md-3">
     <div class="card stats-card bg-white shadow-sm border-0">
       <div class="card-body">
@@ -38,6 +40,7 @@
       </div>
     </div>
   </div>
+
   <div class="col-md-3">
     <div class="card stats-card bg-white shadow-sm border-0">
       <div class="card-body">
@@ -51,13 +54,16 @@
       </div>
     </div>
   </div>
+
   <div class="col-md-3">
     <div class="card stats-card bg-white shadow-sm border-0">
       <div class="card-body">
         <div class="d-flex align-items-center justify-content-between">
           <div>
             <div class="fs-6 text-uppercase text-muted">Today's Revenue</div>
-            <div class="stats-number">${{ "{:,.2f}".format(today_revenue) }}</div>
+            <div class="stats-number">
+              ${{ "%.2f"|format(today_revenue) }}
+            </div>
           </div>
           <i class="fa-solid fa-dollar-sign fa-2x text-dark"></i>
         </div>
@@ -66,6 +72,7 @@
   </div>
 </div>
 
+<!-- Active Deliveries + Chart -->
 <div class="row g-3">
   <div class="col-md-8">
     <div class="card shadow-sm">
@@ -85,16 +92,22 @@
             <tbody>
               {% for delivery in active_deliveries %}
               <tr>
-                <td><a href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}" class="text-decoration-none">{{ delivery.id[:8] }}...</a></td>
-                <td>{{ delivery.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
                 <td>
-                  <span class="badge bg-{{ 'success' if delivery.status == 'delivered' else 'warning' }}">{{ delivery.status }}</span>
+                  <a href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}" class="text-decoration-none">
+                    {{ delivery.id|string|truncate(11, True, '') }}
+                  </a>
                 </td>
-                <td>{{ delivery.receiver_id }}</td>
+                <td>{{ delivery.start_time_str }}</td>
+                <td>
+                  <span class="badge bg-{{ 'success' if delivery.status == 'delivered' else 'warning' }}">
+                    {{ delivery.status }}
+                  </span>
+                </td>
+                <td>{{ delivery.receiver.name if delivery.receiver else delivery.receiver_id }}</td>
                 <td>
                   <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.delivery_detail', delivery_id=delivery.id) }}">View</a>
                   {% if delivery.status != 'delivered' %}
-                  <a class="btn btn-sm btn-outline-info" href="/?join={{ delivery.id }}" target="_blank">Track</a>
+                  <a class="btn btn-sm btn-outline-info" href="{{ url_for('track', join=delivery.id) }}" target="_blank">Track</a>
                   {% endif %}
                 </td>
               </tr>
