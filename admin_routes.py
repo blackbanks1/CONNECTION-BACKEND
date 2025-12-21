@@ -10,7 +10,7 @@ from flask_jwt_extended import (
 )
 from werkzeug.security import check_password_hash
 
-from models import db, User, Delivery, Driver, Rating, Transaction, Payout, Admin
+from models import db, User, Delivery, Feedback, Transaction, Payout, Admin
 # Initialize the admin blueprint
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -154,8 +154,8 @@ def get_dashboard():
         total_deliveries = Delivery.query.count()
         pending_deliveries = Delivery.query.filter_by(status='pending').count()
         completed_deliveries = Delivery.query.filter_by(status='completed').count()
-        active_drivers = Driver.query.filter_by(active=True).count()
-        average_rating = db.session.query(db.func.avg(Rating.value)).scalar() or 0.0
+        active_drivers = User.query.filter_by(active=True).count()
+        average_rating = db.session.query(db.func.avg(Feedback.value)).scalar() or 0.0
 
         from datetime import datetime
         now = datetime.utcnow()
@@ -417,60 +417,6 @@ def update_delivery_status(delivery_id):
             'message': 'An error occurred while updating delivery status'
         }), 500
     
-# -------------------- Update Delivery Status --------------------
-@admin_bp.route('/deliveries/<delivery_id>/status', methods=['PUT'])
-@admin_required
-def update_delivery_status(delivery_id):
-    """
-    Update delivery status.
-    """
-    try:
-        data = request.get_json() or {}
-        new_status = data.get('status')
-        notes = data.get('notes', '')
-
-        if not new_status:
-            return jsonify({
-                'success': False,
-                'message': 'Status is required'
-            }), 400
-
-        delivery = Delivery.query.get(delivery_id)
-        if not delivery:
-            return jsonify({
-                'success': False,
-                'message': 'Delivery not found'
-            }), 404
-
-        delivery.status = new_status
-        if notes:
-            delivery.notes = notes
-        delivery.updated_at = datetime.utcnow()
-
-        db.session.commit()
-
-        updated_delivery = {
-            'delivery_id': delivery.id,
-            'status': delivery.status,
-            'notes': delivery.notes,
-            'updated_at': delivery.updated_at.isoformat()
-        }
-
-        logger.info(f"Delivery {delivery_id} status updated to: {new_status}")
-        return jsonify({
-            'success': True,
-            'message': f'Delivery status updated to {new_status}',
-            'data': updated_delivery
-        }), 200
-
-    except Exception as e:
-        db.session.rollback()
-        logger.exception("Error updating delivery status")
-        return jsonify({
-            'success': False,
-            'message': 'An error occurred while updating delivery status'
-        }), 500
-
 
 # -------------------- Cancel Delivery --------------------
 @admin_bp.route('/deliveries/<delivery_id>/cancel', methods=['POST'])

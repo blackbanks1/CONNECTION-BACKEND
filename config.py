@@ -23,7 +23,7 @@ class Config:
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://")
 
-    SQLALCHEMY_DATABASE_URI = db_url or "sqlite:///local.db"
+    SQLALCHEMY_DATABASE_URI = db_url or "sqlite:///connection.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     SQLALCHEMY_ENGINE_OPTIONS = {

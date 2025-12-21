@@ -245,8 +245,8 @@ class Admin(db.Model):
             'is_active': self.is_active,
             'last_login': self.last_login.isoformat() if self.last_login else None
         }
-    class Transaction(db.Model):
-         __tablename__ = 'transactions'
+class Transaction(db.Model):
+    __tablename__ = 'transactions'
 
     id = db.Column(db.Integer, primary_key=True)
     delivery_id = db.Column(db.Integer, db.ForeignKey('deliveries.id'), nullable=False)

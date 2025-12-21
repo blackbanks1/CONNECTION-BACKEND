@@ -1,6 +1,7 @@
-import eventlet
-eventlet.monkey_patch()
+# app.py
 import os
+if os.environ.get("FLASK_SKIP_EVENTLET") != "1":
+    import eventlet
 from datetime import datetime
 from math import radians, cos, sin, asin, sqrt
 from functools import wraps
@@ -12,7 +13,7 @@ import requests
 
 from dotenv import load_dotenv
 from config import Config
-from models import db, User, Delivery, JoinToken
+from models import db, User, Delivery, JoinToken, Admin, Feedback, Payout, Transaction
 from routes.route_services import route_bp
 from driver_routes import driver_bp
 from driver_auth import driver_auth
@@ -20,6 +21,7 @@ from receiver_routes import receiver_bp
 from admin_auth import admin_auth_bp
 from admin_routes import admin_bp
 from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
 
 # ---------------------------------------
 # LOGGING
@@ -105,7 +107,7 @@ def authenticated_only_socketio(f):
 # APP FACTORY
 # ---------------------------------------
 def create_app():
-    load_dotenv()  # Load environment variables from .env file
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))  # Load environment variables from .env file
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
 
@@ -131,6 +133,7 @@ def create_app():
         raise RuntimeError("SECRET_KEY is not set")
 
     db.init_app(app)
+    migrate = Migrate(app, db)
 
     # Register blueprints
     app.register_blueprint(driver_bp, url_prefix="/driver")
@@ -407,9 +410,6 @@ def on_receiver_update(data):
 # LOCAL DEV
 # ---------------------------------------
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-
     socketio.run(
         app,
         host="0.0.0.0",
