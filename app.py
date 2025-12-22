@@ -12,6 +12,10 @@ from flask_socketio import SocketIO, join_room, emit, disconnect
 import requests
 
 from dotenv import load_dotenv
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env")) 
+print("DEBUG JWT_SECRET_KEY:", os.getenv("JWT_SECRET_KEY"))
+print("DEBUG SECRET_KEY:", os.getenv("SECRET_KEY"))
+
 from config import Config
 from models import db, User, Delivery, JoinToken, Admin, Feedback, Payout, Transaction
 from routes.route_services import route_bp
@@ -107,7 +111,6 @@ def authenticated_only_socketio(f):
 # APP FACTORY
 # ---------------------------------------
 def create_app():
-    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))  # Load environment variables from .env file
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
 

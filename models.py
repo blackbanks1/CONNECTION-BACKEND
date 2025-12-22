@@ -1,18 +1,18 @@
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
-from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
 class User(db.Model):
     __tablename__ = 'users'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default="receiver")  # NEW
+    role = db.Column(db.String(50), nullable=False, default="receiver")
     first_name = db.Column(db.String(80))
     last_name = db.Column(db.String(80))
     phone = db.Column(db.String(20))
@@ -26,19 +26,40 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
-    
-    # Relationships
-    deliveries = db.relationship('Delivery', backref='user', lazy=True, cascade='all, delete-orphan')
+
+    # Relationships (explicit foreign keys)
+    deliveries_requested = db.relationship(
+        'Delivery',
+        foreign_keys='Delivery.user_id',
+        back_populates='requester',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
+    deliveries_driven = db.relationship(
+        'Delivery',
+        foreign_keys='Delivery.driver_id',
+        back_populates='driver',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
+    deliveries_received = db.relationship(
+        'Delivery',
+        foreign_keys='Delivery.receiver_id',
+        back_populates='receiver',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
+
     feedbacks = db.relationship('Feedback', backref='user', lazy=True, cascade='all, delete-orphan')
-    
+
     def set_password(self, password):
         if len(password) < 8:
             raise ValueError("Password must be at least 8 characters")
         self.password_hash = generate_password_hash(password)
-    
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -60,13 +81,14 @@ class User(db.Model):
             'is_active': self.is_active
         }
 
+
 class Delivery(db.Model):
     __tablename__ = 'deliveries'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    driver_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # NEW
-    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # NEW
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)   # requester
+    driver_id = db.Column(db.Integer, db.ForeignKey('users.id'))                 # driver
+    receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'))               # receiver
     delivery_type = db.Column(db.String(50), nullable=False)
     origin_address = db.Column(db.String(255), nullable=False)
     destination_address = db.Column(db.String(255), nullable=False)
@@ -77,16 +99,18 @@ class Delivery(db.Model):
     tracking_number = db.Column(db.String(100), unique=True, default=lambda: secrets.token_hex(8))
     estimated_delivery = db.Column(db.DateTime)
     actual_delivery = db.Column(db.DateTime)
-    cost = db.Column(db.Float, nullable=True)  # made optional
+    cost = db.Column(db.Float, nullable=True)
     special_instructions = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
+
+    # Relationships (explicit back_populates)
+    requester = db.relationship('User', foreign_keys=[user_id], back_populates='deliveries_requested')
+    driver = db.relationship('User', foreign_keys=[driver_id], back_populates='deliveries_driven')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], back_populates='deliveries_received')
+
     feedbacks = db.relationship('Feedback', backref='delivery', lazy=True, cascade='all, delete-orphan')
-    driver = db.relationship('User', foreign_keys=[driver_id], backref='driver_deliveries')
-    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='receiver_deliveries')
-    
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -108,7 +132,6 @@ class Delivery(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
-
 
 class JoinToken(db.Model):
     __tablename__ = 'join_tokens'
