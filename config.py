@@ -1,4 +1,6 @@
 import os
+from sqlalchemy.pool import NullPool
+
 
 class Config:
     # -------------------------
@@ -19,19 +21,33 @@ class Config:
     # -------------------------
     # DATABASE CONFIG
     # -------------------------
-    db_url = os.environ.get("DATABASE_URL", "")
-    if db_url.startswith("postgres://"):
+    db_url = os.environ.get("DATABASE_URL")
+
+    if not db_url:
+        # Default to SQLite if nothing is set
+        db_url = "sqlite:///connection.db"
+    elif db_url.startswith("postgres://"):
+        # Fix old-style URLs
         db_url = db_url.replace("postgres://", "postgresql://")
 
-    SQLALCHEMY_DATABASE_URI = db_url or "sqlite:///connection.db"
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    if db_url.startswith("sqlite:"):
+        # SQLite: disable pooling and allow multi-thread access
+        SQLALCHEMY_DATABASE_URI = db_url
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            "poolclass": NullPool,
+            "connect_args": {"check_same_thread": False}
+        }
+    else:
+        # PostgreSQL (or other DBs): use normal pooling
+        SQLALCHEMY_DATABASE_URI = db_url
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            "pool_pre_ping": True,
+            "pool_recycle": 280,
+            "pool_size": 5,
+            "max_overflow": 5
+        }
 
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_pre_ping": True,
-        "pool_recycle": 280,
-        "pool_size": 5,
-        "max_overflow": 5
-    }
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # -------------------------
     # FORCE HTTPS IN PRODUCTION
@@ -43,7 +59,8 @@ class Config:
     # SOCKET.IO CONFIG
     # -------------------------
     CORS_ALLOWED_ORIGINS = [
-        origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+        origin.strip()
+        for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
     ]
 
     # -------------------------
