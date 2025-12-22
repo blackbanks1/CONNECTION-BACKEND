@@ -1,19 +1,19 @@
 # app.py
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch()   # must be first, before any other imports
 
 import os
+import logging
 from datetime import datetime
 from math import radians, cos, sin, asin, sqrt
 from functools import wraps
-import logging
+
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
 from flask import Flask, render_template, abort, request, session, jsonify
 from flask_socketio import SocketIO, join_room, emit, disconnect
 import requests
-
-from dotenv import load_dotenv
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env")) 
 
 from config import Config
 from models import db, User, Delivery, JoinToken, Admin, Feedback, Payout, Transaction
@@ -27,7 +27,6 @@ from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from db_error_handlers import register_db_error_handlers
 
-
 # ---------------------------------------
 # LOGGING
 # ---------------------------------------
@@ -36,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 # SocketIO must be created BEFORE create_app
 socketio = SocketIO(
-    cors_allowed_origins=[],  # Will be configured in create_app
+    cors_allowed_origins=[],  # configure later if needed
     async_mode="eventlet",
     ping_timeout=25,
     ping_interval=10,
@@ -111,6 +110,9 @@ def authenticated_only_socketio(f):
 # ---------------------------------------
 # APP FACTORY
 # ---------------------------------------
+# ---------------------------------------
+# APP FACTORY
+# ---------------------------------------
 def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
@@ -136,9 +138,11 @@ def create_app():
     if not app.secret_key:
         raise RuntimeError("SECRET_KEY is not set")
 
+    # Initialize extensions
     db.init_app(app)
-    migrate = Migrate(app, db)
-    
+    Migrate(app, db)
+
+    # Register global DB error handlers
     register_db_error_handlers(app)
 
     # Register blueprints
