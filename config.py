@@ -25,7 +25,7 @@ class Config:
 
     if not db_url:
         # Default to SQLite if nothing is set
-        db_url = "sqlite:///connection.db"
+        db_url = "sqlite:///instance/connection.db"
     elif db_url.startswith("postgres://"):
         # Fix old-style URLs
         db_url = db_url.replace("postgres://", "postgresql://")

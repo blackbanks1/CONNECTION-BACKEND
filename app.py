@@ -1,7 +1,8 @@
 # app.py
+import eventlet
+eventlet.monkey_patch()
+
 import os
-if os.environ.get("FLASK_SKIP_EVENTLET") != "1":
-    import eventlet
 from datetime import datetime
 from math import radians, cos, sin, asin, sqrt
 from functools import wraps
@@ -13,8 +14,6 @@ import requests
 
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env")) 
-print("DEBUG JWT_SECRET_KEY:", os.getenv("JWT_SECRET_KEY"))
-print("DEBUG SECRET_KEY:", os.getenv("SECRET_KEY"))
 
 from config import Config
 from models import db, User, Delivery, JoinToken, Admin, Feedback, Payout, Transaction
@@ -136,6 +135,7 @@ def create_app():
         raise RuntimeError("SECRET_KEY is not set")
 
     db.init_app(app)
+  
     migrate = Migrate(app, db)
 
     # Register blueprints
@@ -413,9 +413,6 @@ def on_receiver_update(data):
 # LOCAL DEV
 # ---------------------------------------
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()   # <-- properly indented
-
     socketio.run(
         app,
         host="0.0.0.0",
