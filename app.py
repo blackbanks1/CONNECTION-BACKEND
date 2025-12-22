@@ -25,6 +25,8 @@ from admin_auth import admin_auth_bp
 from admin_routes import admin_bp
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
+from db_error_handlers import register_db_error_handlers
+
 
 # ---------------------------------------
 # LOGGING
@@ -135,8 +137,9 @@ def create_app():
         raise RuntimeError("SECRET_KEY is not set")
 
     db.init_app(app)
-  
     migrate = Migrate(app, db)
+    
+    register_db_error_handlers(app)
 
     # Register blueprints
     app.register_blueprint(driver_bp, url_prefix="/driver")
