@@ -144,15 +144,21 @@ class AdminAuthService:
 
 
 # -------------------- Routes --------------------
+from flask import render_template
 
-@admin_auth_bp.route('/register', methods=['POST'])
+# -------------------- Register --------------------
+@admin_auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     """
     Register a new admin user.
     """
     try:
-        data = request.get_json()
+        if request.method == 'GET':
+            # Render the registration form template
+            return render_template('admin/register.html')
 
+        # Handle POST JSON request
+        data = request.get_json()
         if not data:
             return jsonify({
                 'success': False,
@@ -164,7 +170,7 @@ def register():
         username = data.get('username', '').strip()
 
         response, status_code = AdminAuthService.register_admin(email, password, username)
-        return response, status_code
+        return jsonify(response), status_code
 
     except Exception as e:
         return jsonify({
@@ -174,14 +180,19 @@ def register():
         }), 500
 
 
-@admin_auth_bp.route('/login', methods=['POST'])
+# -------------------- Login --------------------
+@admin_auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """
     Login admin user and return access token.
     """
     try:
-        data = request.get_json()
+        if request.method == 'GET':
+            # Render the login form template
+            return render_template('admin/login.html')
 
+        # Handle POST JSON request
+        data = request.get_json()
         if not data:
             return jsonify({
                 'success': False,
@@ -200,19 +211,21 @@ def login():
             'message': 'An error occurred during login',
             'error': str(e)
         }), 500
-    
+
+
 # -------------------- Logout --------------------
-@admin_auth_bp.route('/logout', methods=['POST'])
+@admin_auth_bp.route('/logout', methods=['GET', 'POST'])
 @jwt_required()  # requires a valid JWT in cookie or header
 def logout():
     """
     Logout admin user.
-
-    Requires: Valid JWT token in HTTP-only cookie.
     """
     try:
-        current_admin = get_jwt_identity()
+        if request.method == 'GET':
+            # Render dashboard or a logout confirmation page
+            return render_template('admin/dashboard.html')
 
+        current_admin = get_jwt_identity()
         response = jsonify({
             'success': True,
             'message': f'Admin {current_admin} logged out successfully'
@@ -240,9 +253,7 @@ def verify_token():
         return jsonify({
             'success': True,
             'message': 'Token is valid',
-            'data': {
-                'email': current_admin
-            }
+            'data': {'email': current_admin}
         }), 200
 
     except Exception as e:

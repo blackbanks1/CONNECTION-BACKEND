@@ -413,6 +413,9 @@ def on_receiver_update(data):
 # LOCAL DEV
 # ---------------------------------------
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()   # <-- properly indented
+
     socketio.run(
         app,
         host="0.0.0.0",
