@@ -21,15 +21,18 @@ class Config:
     # -------------------------
     # DATABASE CONFIG
     # -------------------------
-    db_url = os.environ.get("DATABASE_URL")
 
+
+    db_url = os.environ.get("DATABASE_URL")
+    
     if not db_url:
         # Default to SQLite if nothing is set
         db_url = "sqlite:///instance/connection.db"
     elif db_url.startswith("postgres://"):
-        # Fix old-style URLs
+        # Fix old-style URLs (Render sometimes gives postgres://)
         db_url = db_url.replace("postgres://", "postgresql://")
-
+    
+    # Apply engine options depending on backend
     if db_url.startswith("sqlite:"):
         # SQLite: disable pooling and allow multi-thread access
         SQLALCHEMY_DATABASE_URI = db_url
@@ -38,15 +41,15 @@ class Config:
             "connect_args": {"check_same_thread": False}
         }
     else:
-        # PostgreSQL (or other DBs): use normal pooling
+        # PostgreSQL (or other DBs): use safe pooling defaults
         SQLALCHEMY_DATABASE_URI = db_url
         SQLALCHEMY_ENGINE_OPTIONS = {
-            "pool_pre_ping": True,
-            "pool_recycle": 280,
-            "pool_size": 5,
-            "max_overflow": 5
+            "pool_pre_ping": True,    # keep connections alive
+            "pool_recycle": 1800,     # recycle connections every 30 minutes
+            "pool_size": 5,           # base pool size
+            "max_overflow": 10        # allow extra connections if needed
         }
-
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # -------------------------

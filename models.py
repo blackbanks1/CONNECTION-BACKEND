@@ -10,6 +10,7 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+
     # FIX: Make email optional so signup can succeed without it
     email = db.Column(db.String(120), unique=True, nullable=True)
 
@@ -25,9 +26,15 @@ class User(db.Model):
     country = db.Column(db.String(80))
     profile_picture = db.Column(db.String(255))
     bio = db.Column(db.Text)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+
+    # NEW: Track driver sessions and subscriptions
+    last_session_at = db.Column(db.DateTime, nullable=True)
+    total_sessions = db.Column(db.Integer, default=0)
+    trial_end_date = db.Column(db.DateTime, nullable=True)  # optional trial period
 
     # Relationships
     deliveries_requested = db.relationship(
@@ -54,6 +61,9 @@ class User(db.Model):
 
     feedbacks = db.relationship('Feedback', backref='user', lazy=True, cascade='all, delete-orphan')
 
+    # ---------------------------
+    # Password helpers
+    # ---------------------------
     def set_password(self, password):
         # FIX: Align with frontend rule (≥6 chars instead of ≥8)
         if len(password) < 6:
@@ -63,6 +73,9 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+    # ---------------------------
+    # Serialization
+    # ---------------------------
     def to_dict(self):
         return {
             'id': self.id,
@@ -81,9 +94,11 @@ class User(db.Model):
             'bio': self.bio,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'is_active': self.is_active
+            'is_active': self.is_active,
+            'last_session_at': self.last_session_at.isoformat() if self.last_session_at else None,
+            'total_sessions': self.total_sessions,
+            'trial_end_date': self.trial_end_date.isoformat() if self.trial_end_date else None
         }
-
 class Delivery(db.Model):
     __tablename__ = 'deliveries'
 

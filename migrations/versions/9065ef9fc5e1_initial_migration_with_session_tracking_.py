@@ -1,8 +1,8 @@
-"""initial schema
+"""Initial migration with session tracking fields
 
-Revision ID: e855deacad21
+Revision ID: 9065ef9fc5e1
 Revises: 
-Create Date: 2025-12-23 11:45:46.024245
+Create Date: 2025-12-23 17:43:43.330446
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e855deacad21'
+revision = '9065ef9fc5e1'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -52,7 +52,7 @@ def upgrade():
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=80), nullable=False),
-    sa.Column('email', sa.String(length=120), nullable=False),
+    sa.Column('email', sa.String(length=120), nullable=True),
     sa.Column('password_hash', sa.String(length=255), nullable=False),
     sa.Column('role', sa.String(length=50), nullable=False),
     sa.Column('first_name', sa.String(length=80), nullable=True),
@@ -68,6 +68,9 @@ def upgrade():
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=True),
+    sa.Column('last_session_at', sa.DateTime(), nullable=True),
+    sa.Column('total_sessions', sa.Integer(), nullable=True),
+    sa.Column('trial_end_date', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('username')

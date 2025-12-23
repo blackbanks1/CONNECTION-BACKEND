@@ -7,8 +7,6 @@ driver_bp = Blueprint("driver_bp", __name__)
 # ---------------------------
 # HELPER: Check subscription
 # ---------------------------
-from datetime import datetime
-
 def driver_has_active_subscription(driver):
     """Check if driver has an active subscription or trial period safely."""
     now = datetime.utcnow()
@@ -20,7 +18,6 @@ def driver_has_active_subscription(driver):
         return True
 
     # TODO: Replace with real subscription logic when ready
-    # For now, assume active if no trial_end_date or subscription system
     return True
 
 
@@ -50,9 +47,17 @@ def create_session():
         delivery = Delivery(
             driver_id=driver.id,
             receiver_phone=receiver_phone,
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
+            status="pending"  # example field
         )
         db.session.add(delivery)
+
+        # -------- Update driver stats ----------
+        driver.last_session_at = datetime.utcnow()
+        driver.total_sessions = (driver.total_sessions or 0) + 1
+        db.session.add(driver)
+
+        # -------- Commit both updates ----------
         db.session.commit()
 
         # -------- Create tracking token --------
