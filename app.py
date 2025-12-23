@@ -1,6 +1,5 @@
-import eventlet
-eventlet.monkey_patch()
-   # must be first, before any other imports
+from gevent import monkey
+monkey.patch_all()
 
 import os
 import logging
@@ -36,7 +35,7 @@ logger = logging.getLogger(__name__)
 # SocketIO must be created BEFORE create_app
 socketio = SocketIO(
     cors_allowed_origins=[],  # configure later if needed
-    async_mode="eventlet",
+    async_mode="gevent",
     ping_timeout=25,
     ping_interval=10,
     logger=True,
@@ -162,7 +161,7 @@ def create_app():
     socketio.init_app(
         app,
         cors_allowed_origins=allowed_origins,
-        async_mode="eventlet",
+        async_mode="gevent",
         ping_timeout=25,
         ping_interval=10,
         logger=debug_mode,
