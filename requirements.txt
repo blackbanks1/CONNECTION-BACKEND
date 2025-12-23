@@ -1,10 +1,10 @@
 Flask
-Flask-SocketIO
 python-socketio
 python-engineio
 flask_jwt_extended
-gunicorn
-eventlet
+gunicorn==20.1.0
+eventlet==0.33.3
+flask-socketio==5.3.6
 SQLAlchemy
 Flask-Login
 Flask-Migrate
