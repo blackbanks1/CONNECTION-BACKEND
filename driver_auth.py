@@ -5,9 +5,11 @@ from flask import (
     redirect, url_for, render_template
 )
 from models import db, User
-
+import logging
 driver_auth = Blueprint("driver_auth", __name__)
 
+
+logger = logging.getLogger(__name__)
 # HELPERS ------------------------------------------------------
 
 def current_user():
@@ -46,31 +48,43 @@ def signup_page():
 
 
 # API ROUTES (JSON) --------------------------------------------
-
 @driver_auth.route("/signup", methods=["POST"])
 def signup_api():
     """API endpoint to create a new user account."""
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
 
-    username = data.get("username")
-    phone = data.get("phone")
-    password = data.get("password")
+    username = (data.get("username") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    password = (data.get("password") or "").strip()
+    email = (data.get("email") or None)  # optional now
 
     # Validate required fields
     if not phone or not password:
-        return jsonify({"error": "missing_fields"}), 400
+        return jsonify({"error": "missing_fields", "message": "Phone and password are required"}), 400
 
-    # Check uniqueness of phone number
+    if len(password) < 6:
+        return jsonify({"error": "weak_password", "message": "Password must be at least 6 characters"}), 400
+
+    # Check uniqueness
     if User.query.filter_by(phone=phone).first():
-        return jsonify({"error": "phone_exists"}), 409
+        return jsonify({"error": "phone_exists", "message": "Phone number already registered"}), 409
+    if username and User.query.filter_by(username=username).first():
+        return jsonify({"error": "username_exists", "message": "Username already taken"}), 409
+    if email and User.query.filter_by(email=email).first():
+        return jsonify({"error": "email_exists", "message": "Email already registered"}), 409
 
     # Create new user
     user = User(
         username=username or phone,
         phone=phone,
+        email=email,
         created_at=datetime.utcnow()
     )
-    user.set_password(password)   # must hash securely in User model
+    try:
+        user.set_password(password)  # hashes securely
+    except ValueError as ve:
+        return jsonify({"error": "weak_password", "message": str(ve)}), 400
+
     if hasattr(user, "start_trial"):
         user.start_trial()
 
@@ -79,10 +93,10 @@ def signup_api():
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": "db_error", "details": str(e)}), 500
+        logger.error(f"Signup DB error: {e}")
+        return jsonify({"error": "db_error", "message": "Internal server error"}), 500
 
-    return jsonify({"status": "success"}), 201
-
+    return jsonify({"status": "success", "message": "Account created successfully"}), 201
 # LOGIN / LOGOUT / HOME ----------------------------------------
 
 @driver_auth.route("/login", methods=["POST"])

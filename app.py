@@ -1,3 +1,4 @@
+# FIX: Ensure monkey patching happens at the very top before any other imports
 from gevent import monkey
 monkey.patch_all()
 
@@ -7,8 +8,13 @@ from datetime import datetime
 from math import radians, cos, sin, asin, sqrt
 from functools import wraps
 
+# ---------------------------------------
+# Environment loading
+# ---------------------------------------
+# FIX: Make .env loading robust to different execution contexts
 from dotenv import load_dotenv
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, ".env"))
 
 from flask import Flask, render_template, abort, request, session, jsonify
 from flask_socketio import SocketIO, join_room, emit, disconnect
@@ -32,9 +38,14 @@ from db_error_handlers import register_db_error_handlers
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# SocketIO must be created BEFORE create_app
+# ---------------------------------------
+# SocketIO setup
+# ---------------------------------------
+# FIX: Create SocketIO before app factory, and respect configurable CORS
+#      If Config.CORS_ORIGINS exists, use it; otherwise default to [] for explicit control.
+CORS_ORIGINS = getattr(Config, "CORS_ORIGINS", [])
 socketio = SocketIO(
-    cors_allowed_origins=[],  # configure later if needed
+    cors_allowed_origins=CORS_ORIGINS,  # FIX: allow configuration-driven origins
     async_mode="gevent",
     ping_timeout=25,
     ping_interval=10,
@@ -47,6 +58,7 @@ socketio = SocketIO(
 # ---------------------------------------
 MIN_LAT, MAX_LAT = -90.0, 90.0
 MIN_LNG, MAX_LNG = -180.0, 180.0
+
 GRAPHHOPPER_TIMEOUT = 10  # Reduced from 40 seconds
 DEFAULT_SPEED_KMH = 30.0
 INTERPOLATION_POINTS = 10
@@ -57,6 +69,12 @@ INTERPOLATION_POINTS = 10
 def haversine_meters(lat1, lon1, lat2, lon2):
     """Calculate distance between two coordinates in meters using Haversine formula."""
     try:
+        # FIX: Explicit float conversion to catch non-numeric inputs early
+        lat1 = float(lat1)
+        lon1 = float(lon1)
+        lat2 = float(lat2)
+        lon2 = float(lon2)
+
         lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
         dlon = lon2 - lon1
         dlat = lat2 - lat1
@@ -76,12 +94,20 @@ def validate_coordinates(lat, lng):
             logger.info(f"Invalid lat/lng range: {lat}, {lng}")
             return None, None
         return lat, lng
-    except (ValueError, TypeError):
-        logger.info(f"Non-numeric lat/lng: {lat}, {lng}")
+    except (ValueError, TypeError) as e:
+        logger.info(f"Non-numeric lat/lng: {lat}, {lng} (error: {e})")
         return None, None
 
 def interpolate_points(lat1, lng1, lat2, lng2, num_points=INTERPOLATION_POINTS):
     """Create multiple points along a straight line between start and end."""
+    # FIX: Guard against invalid inputs
+    vals = validate_coordinates(lat1, lng1), validate_coordinates(lat2, lng2)
+    if vals[0] == (None, None) or vals[1] == (None, None):
+        return []
+
+    lat1, lng1 = vals[0]
+    lat2, lng2 = vals[1]
+
     n = max(2, int(num_points))
     return [
         [lat1 + (lat2 - lat1) * i / (n - 1),
@@ -96,9 +122,17 @@ def authenticated_only_socketio(f):
         uid = session.get("user_id")
         if not uid:
             emit("error", {"code": "unauthenticated", "error": "Not authenticated"})
+            # FIX: Use disconnect with namespace if needed; default is current namespace
             disconnect()
             return
-        user = User.query.get(uid)
+
+        # FIX: Prefer db.session.get for SQLAlchemy 2.x compatibility if available
+        try:
+            user = db.session.get(User, uid)
+        except Exception:
+            # Fallback for older SQLAlchemy
+            user = User.query.get(uid)
+
         if not user:
             emit("error", {"code": "invalid_user", "error": "Invalid user"})
             disconnect()
@@ -106,9 +140,6 @@ def authenticated_only_socketio(f):
         return f(*args, **kwargs)
     return wrapped
 
-# ---------------------------------------
-# APP FACTORY
-# ---------------------------------------
 # ---------------------------------------
 # APP FACTORY
 # ---------------------------------------

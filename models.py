@@ -10,7 +10,9 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    # FIX: Make email optional so signup can succeed without it
+    email = db.Column(db.String(120), unique=True, nullable=True)
+
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default="receiver")
     first_name = db.Column(db.String(80))
@@ -27,7 +29,7 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
 
-    # Relationships (explicit foreign keys)
+    # Relationships
     deliveries_requested = db.relationship(
         'Delivery',
         foreign_keys='Delivery.user_id',
@@ -53,8 +55,9 @@ class User(db.Model):
     feedbacks = db.relationship('Feedback', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
-        if len(password) < 8:
-            raise ValueError("Password must be at least 8 characters")
+        # FIX: Align with frontend rule (≥6 chars instead of ≥8)
+        if len(password) < 6:
+            raise ValueError("Password must be at least 6 characters")
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
@@ -80,7 +83,6 @@ class User(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'is_active': self.is_active
         }
-
 
 class Delivery(db.Model):
     __tablename__ = 'deliveries'
