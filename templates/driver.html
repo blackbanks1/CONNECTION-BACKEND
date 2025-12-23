@@ -94,13 +94,15 @@
        CONTAINER & LAYOUT
        ================================ */
     .container {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px 14px;
-      width: 100%;
-    }
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 
     /* ================================
        INPUT CARD
@@ -251,85 +253,109 @@
     /* ================================
        MAP SECTION
        ================================ */
-    .map-section {
-      display: none;
-      width: 100%;
-      height: 100%;
-      min-height: 60vh;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 12px 36px rgba(12, 36, 80, 0.06);
-      padding: 12px;
-      overflow: hidden;
-      position: relative;
-      flex-direction: column;
+.map-section {
+  display: none;
+  width: 100%;
+  height: calc(100vh - 90px); /* navbar aware */
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(12, 36, 80, 0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+.map-section.show {
+  display: block;
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .map-section.show {
-      display: flex;
-      animation: fadeInUp 0.6s ease forwards;
-    }
+   #map {
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
 
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    #map {
-      width: 100%;
-      height: 100%;
-      min-height: 400px;
-      border-radius: 8px;
-      z-index: 1;
-    }
 
     /* ================================
        STATS PANEL
        ================================ */
-    .bottom-stats {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      bottom: 18px;
-      min-width: 120px;
-      background: rgba(34, 34, 34, 0.95);
-      border-radius: 12px;
-      padding: 8px 12px;
-      box-shadow: 0 10px 30px rgba(12, 36, 80, 0.12);
-      font-weight: 700;
-      display: none;
-      z-index: 2000;
-      text-align: center;
-      color: #fff;
-      font-size: 13px;
-    }
+.bottom-stats {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  background: rgba(20, 20, 20, 0.92);
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 600;
+  display: none;
+  z-index: 2000;
+  color: #fff;
+  font-size: 13px;
+  backdrop-filter: blur(6px);
+}
 
 
    /* ================================
        RESPONSIVE DESIGN
        ================================ */
     @media (max-width: 900px) {
-      .input-card { max-width: 100%; }
-      .map-section { min-height: 50vh; }
-      #map { min-height: 350px; }
-    }
+  .input-card {
+    max-width: 100%;
+  }
 
-    @media (max-width: 450px) {
-      .input-card { padding: 24px; }
-      .container { padding: 15px 10px; }
-      .map-section { min-height: 45vh; }
-      #map { min-height: 300px; }
-      .bottom-stats {
-        bottom: 10px;
-        padding: 8px 10px;
-        font-size: 12px;
-      }
-    }
+  .map-section {
+    min-height: 60vh;
+  }
 
-    @media (max-width: 350px) {
-      .input-card { padding: 16px; }
-      #map { min-height: 250px; }
-    }
+  #map {
+    min-height: 60vh;
+  }
+}
+
+@media (max-width: 450px) {
+  .input-card {
+    padding: 22px;
+  }
+
+  .container {
+    padding: 14px 10px;
+  }
+
+  .map-section {
+    min-height: 70vh;
+  }
+
+  #map {
+    min-height: 70vh;
+  }
+
+  .bottom-stats {
+    bottom: 12px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 350px) {
+  .input-card {
+    padding: 16px;
+  }
+
+  .map-section {
+    min-height: 75vh;
+  }
+
+  #map {
+    min-height: 75vh;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -650,6 +676,15 @@ function sendWhatsApp() {
 
   const message = "Track me live:\n" + link;
   window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
+
+  // ✅ When user returns from WhatsApp app, fade in the map
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && !hasShownMap) {
+      setTimeout(() => {
+        showMapSection();
+      }, 500); // short delay for smooth fade-in
+    }
+  }, { once: true });
 }
 
 /* Map & Markers */
