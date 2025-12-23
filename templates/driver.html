@@ -664,6 +664,8 @@ function resetUI() {
   document.getElementById("create_btn").disabled = false;
 }
 
+let whatsappOpened = false;
+
 function sendWhatsApp() {
   const raw = document.getElementById("receiver_phone").value;
   const phone = cleanPhone(raw);
@@ -677,18 +679,18 @@ function sendWhatsApp() {
   const message = "Track me live:\n" + link;
   window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
 
-  // ✅ Attach listener only after WhatsApp button is clicked
-  const onReturn = () => {
-    if (document.visibilityState === "visible" && !hasShownMap) {
-      setTimeout(() => {
-        showMapSection();
-      }, 600); // delay for smooth fade-in
-      document.removeEventListener("visibilitychange", onReturn);
-    }
-  };
-
-  document.addEventListener("visibilitychange", onReturn);
+  // ✅ Mark that WhatsApp was opened
+  whatsappOpened = true;
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (whatsappOpened && document.visibilityState === "visible" && !hasShownMap) {
+    setTimeout(() => {
+      showMapSection();
+      whatsappOpened = false; // reset flag
+    }, 600); // adjust delay as needed
+  }
+});
 
 /* Map & Markers */
 function createMarker(lat, lng, type, title) {
