@@ -1,6 +1,6 @@
-# app.py
 import eventlet
-eventlet.monkey_patch()   # must be first, before any other imports
+eventlet.monkey_patch()
+   # must be first, before any other imports
 
 import os
 import logging
