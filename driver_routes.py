@@ -7,18 +7,20 @@ driver_bp = Blueprint("driver_bp", __name__)
 # ---------------------------
 # HELPER: Check subscription
 # ---------------------------
-def driver_has_active_subscription(driver: User) -> bool:
-    """Return True if driver has an active trial or pass, else False."""
+from datetime import datetime
+
+def driver_has_active_subscription(driver):
+    """Check if driver has an active subscription or trial period safely."""
     now = datetime.utcnow()
 
-    # Free trial active?
-    if driver.trial_end_date and now < driver.trial_end_date:
+    # Safely get trial_end_date if it exists
+    trial_end = getattr(driver, "trial_end_date", None)
+
+    if trial_end and now < trial_end:
         return True
 
-    # Daily pass active?
-    if driver.daily_pass_expires and now < driver.daily_pass_expires:
-        return True
-
+    # TODO: Replace with real subscription logic when ready
+    # For now, assume active if no trial_end_date or subscription system
     return True
 
 
