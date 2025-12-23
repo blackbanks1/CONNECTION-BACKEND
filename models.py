@@ -99,6 +99,9 @@ class User(db.Model):
             'total_sessions': self.total_sessions,
             'trial_end_date': self.trial_end_date.isoformat() if self.trial_end_date else None
         }
+    
+
+
 class Delivery(db.Model):
     __tablename__ = 'deliveries'
 
@@ -106,22 +109,27 @@ class Delivery(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)   # requester
     driver_id = db.Column(db.Integer, db.ForeignKey('users.id'))                 # driver
     receiver_id = db.Column(db.Integer, db.ForeignKey('users.id'))               # receiver
-    delivery_type = db.Column(db.String(50), nullable=False)
-    origin_address = db.Column(db.String(255), nullable=False)
-    destination_address = db.Column(db.String(255), nullable=False)
+
+    delivery_type = db.Column(db.String(50), nullable=False, default="standard")
+    origin_address = db.Column(db.String(255), nullable=False, default="N/A")
+    destination_address = db.Column(db.String(255), nullable=False, default="N/A")
+
     package_description = db.Column(db.Text)
     package_weight = db.Column(db.Float)
     package_dimensions = db.Column(db.String(50))
+
     status = db.Column(db.String(50), default='pending')
     tracking_number = db.Column(db.String(100), unique=True, default=lambda: secrets.token_hex(8))
+
     estimated_delivery = db.Column(db.DateTime)
     actual_delivery = db.Column(db.DateTime)
     cost = db.Column(db.Float, nullable=True)
     special_instructions = db.Column(db.Text)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships (explicit back_populates)
+    # Relationships
     requester = db.relationship('User', foreign_keys=[user_id], back_populates='deliveries_requested')
     driver = db.relationship('User', foreign_keys=[driver_id], back_populates='deliveries_driven')
     receiver = db.relationship('User', foreign_keys=[receiver_id], back_populates='deliveries_received')
@@ -149,23 +157,35 @@ class Delivery(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+    
+
 
 class JoinToken(db.Model):
     __tablename__ = 'join_tokens'
 
     id = db.Column(db.Integer, primary_key=True)
+
+    # Secure random token string
     token = db.Column(
         db.String(255),
         unique=True,
         nullable=False,
         default=lambda: secrets.token_urlsafe(32)
     )
-    email = db.Column(db.String(120), nullable=False)
+
+    # Link token to a delivery
+    delivery_id = db.Column(db.Integer, db.ForeignKey('deliveries.id'), nullable=False)
+    delivery = db.relationship('Delivery', backref='tokens')
+
+    # Email is optional now (not required for tracking links)
+    email = db.Column(db.String(120), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(
         db.DateTime,
         default=lambda: datetime.utcnow() + timedelta(hours=24)  # auto-expire in 24h
     )
+
     is_used = db.Column(db.Boolean, default=False)
     used_at = db.Column(db.DateTime)
 
@@ -183,18 +203,35 @@ class JoinToken(db.Model):
         self.is_used = True
         self.used_at = datetime.utcnow()
 
+    # -------------------- Factory --------------------
+    @classmethod
+    def generate(cls, delivery_id: int, hours: int = 24, email: str = None):
+        """Generate and persist a new join token for a delivery."""
+        expires = datetime.utcnow() + timedelta(hours=hours)
+        token = cls(
+            delivery_id=delivery_id,
+            email=email,
+            expires_at=expires
+        )
+        db.session.add(token)
+        db.session.commit()
+        return token
+
     # -------------------- Serialization --------------------
     def to_dict(self) -> dict:
         """Serialize token details to dictionary."""
         return {
             'id': self.id,
             'token': self.token,
+            'delivery_id': self.delivery_id,
             'email': self.email,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
             'is_used': self.is_used,
             'used_at': self.used_at.isoformat() if self.used_at else None
         }
+    
+
 
 class Feedback(db.Model):
     __tablename__ = 'feedbacks'
@@ -226,6 +263,9 @@ class Feedback(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+    
+
+
 
 class Admin(db.Model):
     __tablename__ = 'admins'
@@ -285,6 +325,9 @@ class Admin(db.Model):
             'is_active': self.is_active,
             'last_login': self.last_login.isoformat() if self.last_login else None
         }
+    
+
+    
 class Transaction(db.Model):
     __tablename__ = 'transactions'
 
