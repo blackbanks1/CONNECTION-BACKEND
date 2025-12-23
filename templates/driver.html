@@ -677,14 +677,17 @@ function sendWhatsApp() {
   const message = "Track me live:\n" + link;
   window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
 
-  // ✅ When user returns from WhatsApp app, fade in the map
-  document.addEventListener("visibilitychange", () => {
+  // ✅ Attach listener only after WhatsApp button is clicked
+  const onReturn = () => {
     if (document.visibilityState === "visible" && !hasShownMap) {
       setTimeout(() => {
         showMapSection();
-      }, 500); // short delay for smooth fade-in
+      }, 600); // delay for smooth fade-in
+      document.removeEventListener("visibilitychange", onReturn);
     }
-  }, { once: true });
+  };
+
+  document.addEventListener("visibilitychange", onReturn);
 }
 
 /* Map & Markers */
