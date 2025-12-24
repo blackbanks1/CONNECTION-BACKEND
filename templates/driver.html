@@ -472,9 +472,6 @@ async function createSession() {
       document.getElementById("tracking_box").style.display = "block";
       showSuccess("Session created! Share the link via WhatsApp.");
 
-      setTimeout(() => {
-        showMapSection();
-      }, 600);
     } else {
       showError("Tracking link not generated");
       document.getElementById("create_btn").disabled = false;
@@ -527,24 +524,25 @@ function showMapSection() {
   const inputCard = document.getElementById('input-card');
   const mapSection = document.getElementById('map-section');
 
+  // Hide input card
   inputCard.classList.add('hidden');
 
+  // Fade in map section
   setTimeout(() => {
     mapSection.classList.add('show');
 
-    requestAnimationFrame(() => {
+    // ✅ Wait until fade-in completes before initializing Leaflet
+    setTimeout(() => {
       initMap();
 
-      // ✅ Force Leaflet to recalc after fade-in
-      setTimeout(() => {
-        if (map) {
-          map.invalidateSize();
-          if (driverMarker) {
-            map.setView(driverMarker.getLatLng(), 16);
-          }
+      if (map) {
+        map.invalidateSize(); // recalc dimensions
+        if (driverMarker) {
+          map.setView(driverMarker.getLatLng(), 16);
         }
-      }, 700); // aligned with CSS animation
+      }
 
+      // GPS setup
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
@@ -572,27 +570,22 @@ function showMapSection() {
         startGPS();
         gpsStarted = true;
       }
-    });
+    }, 700); // match CSS animation duration
   }, 450);
 }
-// ✅ Extra fix: handle resize/orientation changes
-window.addEventListener("resize", () => {
-  if (map) {
-    map.invalidateSize();
-    if (driverMarker) {
-      map.setView(driverMarker.getLatLng(), 16);
-    }
-  }
-});
 
-window.addEventListener("orientationchange", () => {
+// ✅ Handle resize/orientation changes cleanly
+function refreshMapView() {
   if (map) {
     map.invalidateSize();
     if (driverMarker) {
       map.setView(driverMarker.getLatLng(), 16);
     }
   }
-});
+}
+
+window.addEventListener("resize", refreshMapView);
+window.addEventListener("orientationchange", refreshMapView);
 
 function resetUI() {
   delivery_id = null;
@@ -621,8 +614,8 @@ function resetUI() {
   inputCard.classList.remove('hidden');
   document.getElementById("create_btn").disabled = false;
 }
-
 let whatsappOpened = false;
+let waitingForReturn = false; // extra guard
 
 function sendWhatsApp() {
   const raw = document.getElementById("receiver_phone").value;
@@ -637,26 +630,33 @@ function sendWhatsApp() {
   const message = "Track me live:\n" + link;
   window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
 
-  // ✅ Mark that WhatsApp was opened
+  // ✅ Mark that WhatsApp was opened and we are waiting for return
   whatsappOpened = true;
+  waitingForReturn = true;
 }
 
 // ✅ Detect return from WhatsApp reliably
 function handleReturn() {
-  if (whatsappOpened && !hasShownMap) {
+  // Only fire if WhatsApp was opened AND we are returning
+  if (whatsappOpened && waitingForReturn && !hasShownMap) {
     setTimeout(() => {
       showMapSection();
-      whatsappOpened = false; // reset flag
+      // reset flags
+      whatsappOpened = false;
+      waitingForReturn = false;
     }, 700); // match CSS animation length
   }
 }
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") handleReturn();
-});
-
+// Use focus as the main return trigger
 window.addEventListener("focus", handleReturn);
 
+// Optional: also catch visibilitychange, but only when becoming visible again
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    handleReturn();
+  }
+});
 /* Map & Markers */
 function createMarker(lat, lng, type, title) {
   const icons = {
