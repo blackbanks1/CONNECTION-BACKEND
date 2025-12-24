@@ -7,7 +7,7 @@
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
+  
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -569,13 +569,13 @@ function sendWhatsApp() {
 }
 
 // Unified handleReturn
-function handleReturn() {
-  if (whatsappOpened && waitingForReturn && !hasShownMap) {
-    setTimeout(() => {
-      showMapSection();
-      whatsappOpened = false;
-      waitingForReturn = false;
-    }, 700); // match CSS animation
+async function handleReturn() {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 700)); // delay for 700ms
+    showMapSection();
+  } catch (error) {
+    console.error("Error showing map section:", error);
+    // Handle the error appropriately
   }
 }
 window.addEventListener("focus", handleReturn);
