@@ -7,32 +7,22 @@
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-  <!-- Socket.IO -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
   <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
   <style>
-    /* ================================
-       CSS VARIABLES
-       ================================ */
     :root {
       --accent:  #0066ff;
-      --muted: #667085;
+      --muted: #555; /* improved contrast */
       --success: #00b894;
       --whatsapp: #25D366;
       --error: #ff4757;
     }
 
-    /* ================================
-       GLOBAL STYLES
-       ================================ */
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -46,9 +36,7 @@
       min-height: 100vh;
     }
 
-    /* ================================
-       NAVBAR
-       ================================ */
+    /* Navbar */
     .navbar {
       display: flex;
       align-items: center;
@@ -60,11 +48,7 @@
       box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15);
       flex-shrink: 0;
     }
-
-    .navbar img {
-      height: 34px;
-    }
-
+    .navbar img { height: 34px; }
     .status-indicator {
       display: inline-block;
       width: 10px;
@@ -75,40 +59,26 @@
       background: var(--error);
       transition: background 0.3s ease;
     }
-
     .status-indicator.connected {
       background: var(--success);
       animation: pulse 2s infinite;
     }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.7;} }
 
-    .status-indicator.disconnected {
-      background: var(--error);
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-
-    /* ================================
-       CONTAINER & LAYOUT
-       ================================ */
+    /* Container */
     .container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-}
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
 
-
-    /* ================================
-       INPUT CARD
-       ================================ */
+    /* Input card */
     .input-card {
-      background: #ffffff;
+      background: #fff;
       border-radius: 12px;
       box-shadow: 0 12px 36px rgba(12, 36, 80, 0.06);
       padding: 32px;
@@ -116,30 +86,15 @@
       max-width: 420px;
       transition: all 0.45s ease;
     }
-
     .input-card.hidden {
       opacity: 0;
       transform: translateY(-20px);
       pointer-events: none;
     }
 
-    /* ================================
-       FORM ELEMENTS
-       ================================ */
-    h3 {
-      margin: 0 0 16px 0;
-      font-size: 20px;
-      font-weight: 700;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 6px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-    }
-
+    /* Form elements */
+    h3 { margin: 0 0 16px; font-size: 20px; font-weight: 700; }
+    label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; font-weight:500; }
     input {
       width: 100%;
       padding: 10px 12px;
@@ -148,16 +103,13 @@
       font-size: 15px;
       transition: all 0.2s ease;
     }
-
     input:focus {
       outline: none;
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
     }
 
-    /* ================================
-       BUTTONS
-       ================================ */
+    /* Buttons */
     .button {
       width: 100%;
       padding: 12px;
@@ -171,207 +123,137 @@
       font-size: 15px;
       transition: background 0.2s ease;
     }
+    .button:hover:not(:disabled) { background: #0052cc; }
+    .button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .button.whatsapp { background: var(--whatsapp); }
+    .button.whatsapp:hover:not(:disabled) { background: #1da851; }
+    .button.error { background: var(--error); }
+    .button.error:hover:not(:disabled) { background: #ee5a6f; }
 
-    .button:hover:not(:disabled) {
-      background: #0052cc;
-    }
-
-    .button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .button.whatsapp {
-      background: var(--whatsapp);
-    }
-
-    .button.whatsapp:hover:not(:disabled) {
-      background: #1da851;
-    }
-
-    .button.error {
-      background: var(--error);
-    }
-
-    .button.error:hover:not(:disabled) {
-      background: #ee5a6f;
-    }
-
-    /* ================================
-       LINKS & BOXES
-       ================================ */
-    .link-box {
-      display: block;
-      margin-top: 12px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      background: #eef6ff;
-      color: var(--accent);
-      word-break: break-all;
-      text-decoration: none;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
-      transition: background 0.2s ease;
-      font-size: 12px;
-    }
-
-    .link-box:hover {
-      background: #dde9ff;
-    }
-
-    .notice {
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 8px;
-    }
-
-    .error-box {
-      background: #ffe5e5;
-      border: 1px solid var(--error);
-      color: #c92a2a;
+    /* Feedback boxes */
+    .error-box, .success-box {
       padding: 10px 12px;
       border-radius: 8px;
       margin-top: 10px;
       display: none;
       font-size: 13px;
     }
+    .error-box { background:#ffe5e5; border:1px solid var(--error); color:#c92a2a; }
+    .success-box { background:#d4edda; border:1px solid var(--success); color:#155724; }
 
-    .success-box {
-      background: #d4edda;
-      border: 1px solid var(--success);
-      color: #155724;
-      padding: 10px 12px;
-      border-radius: 8px;
-      margin-top: 10px;
+    #tracking_box { display:none; }
+
+    /* Map section */
+    .map-section {
       display: none;
-      font-size: 13px;
+      flex: 1;
+      width: 100%;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(12, 36, 80, 0.08);
+      overflow: hidden;
+      position: relative;
     }
-
-    #tracking_box {
-      display: none;
+    .map-section.show {
+      display: flex;
+      animation: fadeInUp 0.5s ease forwards;
     }
-
-    /* ================================
-       MAP SECTION
-       ================================ */
-/* Map section: flex-grown, no fixed vh math */
-.map-section {
-  display: none;              /* hidden by default */
-  flex: 1;                    /* take remaining vertical space under navbar */
-  width: 100%;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 16px 40px rgba(12, 36, 80, 0.08);
-  overflow: hidden;           /* contain map/controls */
-  position: relative;         /* for bottom-stats absolute positioning */
-}
-
-/* Fade-in animation trigger */
-.map-section.show {
-  display: flex;
-  animation: fadeInUp 0.5s ease forwards;
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(30px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* Leaflet map fills the section */
-#map {
-  width: 100%;
-  height: 100%;
-  flex:1;         /* the section provides the rounded corners */
-}
-
-/* Bottom stats stays above the map tiles */
-.bottom-stats {
+    @keyframes fadeInUp {
+      from { opacity:0; transform:translateY(30px) scale(0.98); }
+      to { opacity:1; transform:translateY(0) scale(1); }
+    }
+    #end_session {
   position: absolute;
-  right: 20px;
   bottom: 20px;
-  background: rgba(20, 20, 20, 0.92);
-  border-radius: 14px;
-  padding: 12px 16px;
-  font-weight: 600;
-  display: none;
-  z-index: 2000;              /* above Leaflet layers */
-  color: #fff;
-  font-size: 13px;
-  backdrop-filter: blur(6px);
+  right: 20px;
+  width: auto;
+  padding: 10px 16px;
+  font-size: 14px;
+  z-index: 2100; /* above map controls */
 }
+    #map {
+      width: 100%;
+      height: 100%;
+      min-height: 300px; /* ensures visible area after fade-in */
+      flex: 1;
+    }
+    .bottom-stats {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      background: rgba(20,20,20,0.92);
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-weight: 600;
+      display: none;
+      z-index: 2000;
+      color: #fff;
+      font-size: 13px;
+      backdrop-filter: blur(6px);
+    }
 
-/* Responsive: keep things proportional without forcing huge min-heights */
-@media (max-width: 900px) {
-  .input-card { max-width: 100%; }
-  .container { padding: 14px 16px; }
-  .bottom-stats { bottom: 14px; }
-}
-
-@media (max-width: 450px) {
-  .input-card { padding: 22px; }
-  .container { padding: 12px 10px; }
-  .bottom-stats { bottom: 12px; padding: 8px 12px; font-size: 12px; }
-}
-
-@media (max-width: 350px) {
-  .input-card { padding: 16px; }
-}
+    @media (max-width: 900px) {
+      .input-card { max-width: 100%; }
+      .container { padding: 14px 16px; }
+      .bottom-stats { bottom: 14px; }
+    }
+    @media (max-width: 450px) {
+      .input-card { padding: 22px; }
+      .container { padding: 12px 10px; }
+      .bottom-stats { bottom: 12px; padding: 8px 12px; font-size: 12px; }
+    }
+    @media (max-width: 350px) { .input-card { padding: 16px; } }
   </style>
 </head>
 <body>
   <!-- Navbar -->
-  <div class="navbar">
+  <div class="navbar" role="navigation">
     <img src="/static/logo.png" alt="logo" onerror="this.src='/static/placeholder.png'">
     <span>Connection — Driver</span>
     <div id="connection-status" class="status-indicator disconnected" title="Socket connection status"></div>
   </div>
 
   <!-- Main container -->
-  <div class="container">
+  <main class="container" role="main">
     <div class="input-card" id="input-card">
       <h3>Start a Delivery Session</h3>
 
       <label for="receiver_phone">Receiver Phone Number</label>
-      <input id="receiver_phone" type="tel" placeholder="E.g. 0788 123 456" autocomplete="tel" />
+      <input id="receiver_phone" type="tel" placeholder="E.g. 0788 123 456" autocomplete="tel" aria-label="Receiver phone number" />
 
-      <button class="button" id="create_btn" onclick="createSession()">Create Session</button>
+      <button class="button" id="create_btn">Create Session</button>
 
       <p class="notice">Please allow location access when your browser asks.</p>
 
-      <!-- Feedback boxes -->
       <div id="error-box" class="error-box"></div>
       <div id="success-box" class="success-box"></div>
 
-      <!-- Tracking box (hidden until session created) -->
       <div id="tracking_box">
         <a id="tracking_link" href="#" target="_blank" class="link-box"></a>
-        <button class="button whatsapp" id="wa_send" onclick="sendWhatsApp()">Send via WhatsApp</button>
-        <button class="button error" id="end_session" onclick="endSession()">End Session</button>
+        <button class="button whatsapp" id="wa_send">Send via WhatsApp</button>
+        <button class="button error" id="end_session">End Session</button>
       </div>
     </div>
-  </div>
+  </main>
 
   <!-- Map section -->
   <div class="map-section" id="map-section">
     <div id="map"></div>
     <div id="stats" class="bottom-stats"></div>
   </div>
-</body>
-
 <script>
 /* ===========================
    DRIVER DASHBOARD SCRIPT
    =========================== */
 
 const BACKEND_URL = (() => {
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:8000';
-  }
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:8000";
   return window.location.origin;
 })();
 
 const socket = io(BACKEND_URL, {
   transports: ["websocket", "polling"],
-  upgrade: true,
   reconnection: true,
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
@@ -390,35 +272,59 @@ let hasShownMap = false;
 let lastRouteCall = 0;
 const ROUTE_THROTTLE_MS = 800;
 
-/* Utilities */
+/* ===========================
+   UI helpers
+   =========================== */
+
+let errorHideTimer = null;
+let successHideTimer = null;
+
 function showError(message) {
-  const errorBox = document.getElementById('error-box');
+  const errorBox = document.getElementById("error-box");
+  if (!errorBox) return;
   errorBox.textContent = message;
-  errorBox.style.display = 'block';
-  setTimeout(() => {
-    errorBox.style.display = 'none';
+  errorBox.style.display = "block";
+  if (errorHideTimer) clearTimeout(errorHideTimer);
+  errorHideTimer = setTimeout(() => {
+    errorBox.style.display = "none";
+    errorHideTimer = null;
   }, 5000);
 }
 
 function showSuccess(message) {
-  const successBox = document.getElementById('success-box');
+  const successBox = document.getElementById("success-box");
+  if (!successBox) return;
   successBox.textContent = message;
-  successBox.style.display = 'block';
-  setTimeout(() => {
-    successBox.style.display = 'none';
+  successBox.style.display = "block";
+  if (successHideTimer) clearTimeout(successHideTimer);
+  successHideTimer = setTimeout(() => {
+    successBox.style.display = "none";
+    successHideTimer = null;
   }, 5000);
 }
 
 function updateConnectionStatus(connected) {
-  const indicator = document.getElementById('connection-status');
-  indicator.className = 'status-indicator ' + (connected ? 'connected' : 'disconnected');
+  const indicator = document.getElementById("connection-status");
+  if (!indicator) return;
+  indicator.className = "status-indicator " + (connected ? "connected" : "disconnected");
 }
 
-function cleanPhone(raw) {
-  if (!raw) return "";
-  let cleaned = raw.replace(/\D+/g, "");
-  if (cleaned.startsWith("0")) cleaned = "250" + cleaned.slice(1);
-  return cleaned;
+/* ===========================
+   Phone utilities (Rwanda)
+   =========================== */
+
+function normalizeRwandaNumber(raw) {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+
+  // Accepted forms:
+  //  - 07XXXXXXXX (10 digits starting with 07) -> 2507XXXXXXXX
+  //  - 7XXXXXXXX (9 digits starting with 7) -> 2507XXXXXXXX
+  //  - 2507XXXXXXXX (12 digits) -> unchanged
+  if (digits.startsWith("2507") && digits.length === 12) return digits;
+  if (digits.startsWith("07") && digits.length === 10) return "250" + digits;
+  if (digits.length === 9 && digits.startsWith("7")) return "250" + digits;
+  return null; // invalid format
 }
 
 function formatKm(km) {
@@ -429,66 +335,118 @@ function formatMin(min) {
   return min == null ? "- min" : Math.round(min) + " min";
 }
 
-function normalizeRwandaNumber(num) {
-  if (!num) return null;
-  num = num.replace(/\D/g, "");
-  if (num.startsWith("07")) return "250" + num.slice(1);
-  if (num.startsWith("2507")) return num;
-  if (num.length === 9 && num.startsWith("7")) return "250" + num;
-  return num.length >= 10 ? num : null;
+/* ===========================
+   Map visibility + fix blank tiles
+   =========================== */
+
+function ensureMapVisible() {
+  const section = document.getElementById("map-section");
+  if (!section) return;
+  if (!hasShownMap) {
+    section.classList.add("show");
+    hasShownMap = true;
+  }
+  // Leaflet requires invalidateSize after container becomes visible
+  setTimeout(() => {
+    if (map && typeof map.invalidateSize === "function") {
+      map.invalidateSize();
+    }
+  }, 200);
 }
 
-/* Session Management */
+/* ===========================
+   Session management
+   =========================== */
+
 async function createSession() {
-  const phone = document.getElementById("receiver_phone").value.trim();
-  if (!phone) {
-    showError("Please enter receiver phone number");
+  const btn = document.getElementById("create_btn");
+  const phoneInput = document.getElementById("receiver_phone");
+  const trackingBox = document.getElementById("tracking_box");
+  const linkElem = document.getElementById("tracking_link");
+
+  if (!phoneInput) {
+    showError("Phone input not found");
     return;
   }
 
-  document.getElementById("create_btn").disabled = true;
+  const normalized = normalizeRwandaNumber(phoneInput.value.trim());
+  if (!normalized) {
+    showError("Enter a valid Rwanda number (e.g., 0788 123 456)");
+    return;
+  }
 
+  if (btn) btn.disabled = true;
+
+  let data;
   try {
     const res = await fetch(BACKEND_URL + "/driver/create-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ receiver_phone: normalizeRwandaNumber(phone) }),
-      credentials: 'include'
+      body: JSON.stringify({ receiver_phone: normalized }),
+      credentials: "include",
     });
 
-    const data = await res.json();
+    // Parse JSON safely
+    try {
+      data = await res.json();
+    } catch (e) {
+      showError("Invalid server response");
+      if (btn) btn.disabled = false;
+      return;
+    }
+
     if (!res.ok) {
-      showError(data.error || "Failed to create session");
-      document.getElementById("create_btn").disabled = false;
+      showError(data?.error || "Failed to create session");
+      if (btn) btn.disabled = false;
       return;
     }
-
-    delivery_id = data.delivery_id;
-    const linkElem = document.getElementById("tracking_link");
-
-    if (data.tracking_link) {
-      linkElem.href = data.tracking_link;
-      linkElem.textContent = data.tracking_link;
-      document.getElementById("tracking_box").style.display = "block";
-      showSuccess("Session created! Share the link via WhatsApp.");
-
-    } else {
-      showError("Tracking link not generated");
-      document.getElementById("create_btn").disabled = false;
-      return;
-    }
-
-    if (socket && socket.connected) {
-      socket.emit("join_delivery", { delivery_id, role: "driver" });
-    }
-
   } catch (err) {
     console.error(err);
-    showError("Network error: " + err.message);
-    document.getElementById("create_btn").disabled = false;
+    showError("Network error: " + (err?.message || "Unknown"));
+    if (btn) btn.disabled = false;
+    return;
   }
+
+  // Success flow
+  delivery_id = data.delivery_id;
+
+  if (data.tracking_link && linkElem && trackingBox) {
+    linkElem.href = data.tracking_link;
+    linkElem.textContent = data.tracking_link;
+    trackingBox.style.display = "block";
+    showSuccess("Session created! Share the tracking link.");
+  } else {
+    showError("Tracking link not generated");
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  // Join socket room reliably
+  const joinPayload = { delivery_id, role: "driver" };
+  if (socket && socket.connected) {
+    socket.emit("join_delivery", joinPayload);
+  } else if (socket) {
+    const onceConnect = () => {
+      socket.emit("join_delivery", joinPayload);
+      socket.off("connect", onceConnect);
+    };
+    socket.on("connect", onceConnect);
+  }
+
+  // Reveal the map and fix blank tiles after fade-in
+  ensureMapVisible();
+
+  // Re-enable the button to allow another session if needed
+  if (btn) btn.disabled = false;
 }
 
+/* ===========================
+   Socket connection indicators
+   =========================== */
+
+socket.on("connect", () => updateConnectionStatus(true));
+socket.on("disconnect", () => updateConnectionStatus(false));
+socket.on("connect_error", () => updateConnectionStatus(false));
 
 /* ===========================
    DRIVER DASHBOARD SCRIPT — Part 2
@@ -502,7 +460,7 @@ function showMapSection() {
   const mapSection = document.getElementById('map-section');
 
   inputCard.classList.add('hidden');
-  mapSection.classList.add('show'); // ✅ make visible immediately
+  mapSection.classList.add('show'); // make visible immediately
 
   // Delay map init until after fade-in
   setTimeout(() => {
@@ -546,7 +504,7 @@ function showMapSection() {
   }, 700); // match CSS animation
 }
 
-// ✅ Handle resize/orientation changes cleanly
+// Handle resize/orientation changes
 function refreshMapView() {
   if (map) {
     map.invalidateSize();
@@ -555,7 +513,6 @@ function refreshMapView() {
     }
   }
 }
-
 window.addEventListener("resize", refreshMapView);
 window.addEventListener("orientationchange", refreshMapView);
 
@@ -599,43 +556,67 @@ function sendWhatsApp() {
     showError("Tracking link not available");
     return;
   }
+  if (!phone) {
+    showError("Invalid phone number for WhatsApp");
+    return;
+  }
 
   const message = "Track me live:\n" + link;
   window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
 
-  whatsappOpened = true; // mark WhatsApp opened
+  whatsappOpened = true;
+  waitingForReturn = true;
 }
 
+// Unified handleReturn
 function handleReturn() {
-  if (whatsappOpened && !hasShownMap) {
-    showMapSection();   // ✅ call directly here
-    whatsappOpened = false;
-  }
-}
-
-window.addEventListener("focus", handleReturn);
-// ✅ Detect return from WhatsApp reliably
-function handleReturn() {
-  // Only fire if WhatsApp was opened AND we are returning
   if (whatsappOpened && waitingForReturn && !hasShownMap) {
     setTimeout(() => {
       showMapSection();
-      // reset flags
       whatsappOpened = false;
       waitingForReturn = false;
-    }, 700); // match CSS animation length
+    }, 700); // match CSS animation
   }
 }
-
-// Use focus as the main return trigger
 window.addEventListener("focus", handleReturn);
-
-// Optional: also catch visibilitychange, but only when becoming visible again
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     handleReturn();
   }
 });
+
+/* ===========================
+   End Session
+   =========================== */
+async function endSession() {
+  if (!delivery_id) {
+    showError("No active session to end");
+    return;
+  }
+
+  try {
+    const res = await fetch(BACKEND_URL + "/driver/end-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ delivery_id }),
+      credentials: "include",
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      showError(data.error || "Failed to end session");
+      return;
+    }
+
+    showSuccess("Session ended successfully");
+  } catch (err) {
+    console.error(err);
+    showError("Network error: " + err.message);
+  }
+
+  resetUI();
+}
+
 /* Map & Markers */
 function createMarker(lat, lng, type, title) {
   const icons = {
@@ -673,12 +654,12 @@ function initMap() {
     if (window.innerWidth > 700) {
       L.control.zoom({ position: 'topright' }).addTo(map);
     }
+    map.attributionControl.setPosition('bottomright');
   } catch (err) {
     console.error("Map init error:", err);
     showError("Failed to initialize map");
   }
 }
-
 
 /* ===========================
    DRIVER DASHBOARD SCRIPT — Part 3
@@ -743,7 +724,14 @@ async function requestRoute(start, end) {
       body: JSON.stringify({ start, end })
     });
 
-    const j = await res.json();
+    let j;
+    try {
+      j = await res.json();
+    } catch {
+      console.error("Invalid route response");
+      return;
+    }
+
     if (!res.ok || !j) return;
 
     let poly = (j.polyline && Array.isArray(j.polyline) && j.polyline.length > 1)
@@ -754,10 +742,12 @@ async function requestRoute(start, end) {
 
     const stats = document.getElementById("stats");
     if (stats) {
-      const distanceKm = j.distance_km || 0;
-      const etaMin = j.eta_min || 0;
+      const distanceKm = j.distance_km;
+      const etaMin = j.eta_min;
       stats.style.display = "block";
-      stats.innerText = formatKm(distanceKm) + " · " + formatMin(etaMin);
+      stats.innerText =
+        (distanceKm ? formatKm(distanceKm) : "- km") + " · " +
+        (etaMin ? formatMin(etaMin) : "- min");
     }
   } catch (err) {
     console.error("Route error:", err);
@@ -883,10 +873,17 @@ socket.on("error_event", (error) => {
   showError("Server error: " + (error.error || "Unknown"));
 });
 
+/* Receiver simulation */
 function simulateReceiver(lat, lng) {
   if (!delivery_id) {
     showError("No active delivery");
     return;
+  }
+  // Update local marker immediately for feedback
+  if (!receiverMarker && map) {
+    receiverMarker = createMarker(lat, lng, "receiver", "Receiver").addTo(map);
+  } else if (receiverMarker) {
+    smoothMoveMarker(receiverMarker, lat, lng);
   }
   socket.emit("receiver_update", { delivery_id, lat, lng });
 }
