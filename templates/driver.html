@@ -7,16 +7,19 @@
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
   <style>
     :root {
-      --accent:  #0066ff;
-      --muted: #555; /* improved contrast */
+      --accent: #0066ff;
+      --muted: #555;
       --success: #00b894;
       --whatsapp: #25D366;
       --error: #ff4757;
@@ -163,18 +166,18 @@
       to { opacity:1; transform:translateY(0) scale(1); }
     }
     #end_session {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  width: auto;
-  padding: 10px 16px;
-  font-size: 14px;
-  z-index: 2100; /* above map controls */
-}
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      width: auto;
+      padding: 10px 16px;
+      font-size: 14px;
+      z-index: 2100;
+    }
     #map {
       width: 100%;
       height: 100%;
-      min-height: 300px; /* ensures visible area after fade-in */
+      min-height: 300px;
       flex: 1;
     }
     .bottom-stats {
@@ -229,7 +232,7 @@
       <div id="success-box" class="success-box"></div>
 
       <div id="tracking_box">
-        <a id="tracking_link" href="#" target="_blank" class="link-box"></a>
+               <a id="tracking_link" href="#" target="_blank" class="link-box"></a>
         <button class="button whatsapp" id="wa_send">Send via WhatsApp</button>
         <button class="button error" id="end_session">End Session</button>
       </div>
@@ -386,7 +389,6 @@ async function createSession() {
       credentials: "include",
     });
 
-    // Parse JSON safely
     try {
       data = await res.json();
     } catch (e) {
@@ -436,7 +438,6 @@ async function createSession() {
   // Reveal the map and fix blank tiles after fade-in
   ensureMapVisible();
 
-  // Re-enable the button to allow another session if needed
   if (btn) btn.disabled = false;
 }
 
@@ -449,18 +450,18 @@ socket.on("disconnect", () => updateConnectionStatus(false));
 socket.on("connect_error", () => updateConnectionStatus(false));
 
 /* ===========================
-   DRIVER DASHBOARD SCRIPT — Part 2
+   Map section logic
    =========================== */
 
 function showMapSection() {
   if (hasShownMap) return;
   hasShownMap = true;
 
-  const inputCard = document.getElementById('input-card');
-  const mapSection = document.getElementById('map-section');
+  const inputCard = document.getElementById("input-card");
+  const mapSection = document.getElementById("map-section");
 
-  inputCard.classList.add('hidden');
-  mapSection.classList.add('show'); // make visible immediately
+  inputCard.classList.add("hidden");
+  mapSection.classList.add("show");
 
   // Delay map init until after fade-in
   setTimeout(() => {
@@ -516,6 +517,10 @@ function refreshMapView() {
 window.addEventListener("resize", refreshMapView);
 window.addEventListener("orientationchange", refreshMapView);
 
+
+/* ===========================
+   Reset UI
+   =========================== */
 function resetUI() {
   delivery_id = null;
   hasShownMap = false;
@@ -536,46 +541,50 @@ function resetUI() {
   receiverMarker = null;
   routePolyline = null;
 
-  const inputCard = document.getElementById('input-card');
-  const mapSection = document.getElementById('map-section');
+  const inputCard = document.getElementById("input-card");
+  const mapSection = document.getElementById("map-section");
 
-  mapSection.classList.remove('show');
-  inputCard.classList.remove('hidden');
+  mapSection.classList.remove("show");
+  inputCard.classList.remove("hidden");
   document.getElementById("create_btn").disabled = false;
 }
 
+/* ===========================
+   WhatsApp Sharing
+   =========================== */
 let whatsappOpened = false;
 let waitingForReturn = false;
 
 function sendWhatsApp() {
   const raw = document.getElementById("receiver_phone").value;
-  const phone = cleanPhone(raw);
+  const normalized = normalizeRwandaNumber(raw);
   const link = document.getElementById("tracking_link").href;
 
   if (!link) {
     showError("Tracking link not available");
     return;
   }
-  if (!phone) {
+  if (!normalized) {
     showError("Invalid phone number for WhatsApp");
     return;
   }
 
   const message = "Track me live:\n" + link;
-  window.open("https://wa.me/" + phone + "?text=" + encodeURIComponent(message), "_blank");
+  window.open("https://wa.me/" + normalized + "?text=" + encodeURIComponent(message), "_blank");
 
   whatsappOpened = true;
   waitingForReturn = true;
 }
 
-// Unified handleReturn
+/* ===========================
+   Handle Return (focus/visibility)
+   =========================== */
 async function handleReturn() {
   try {
-    await new Promise(resolve => setTimeout(resolve, 700)); // delay for 700ms
+    await new Promise(resolve => setTimeout(resolve, 700));
     showMapSection();
   } catch (error) {
     console.error("Error showing map section:", error);
-    // Handle the error appropriately
   }
 }
 window.addEventListener("focus", handleReturn);
@@ -617,21 +626,23 @@ async function endSession() {
   resetUI();
 }
 
-/* Map & Markers */
+/* ===========================
+   Map & Markers
+   =========================== */
 function createMarker(lat, lng, type, title) {
   const icons = {
-    driver: '/static/driver.png',
-    receiver: '/static/receiver.png'
+    driver: "/static/driver.png",
+    receiver: "/static/receiver.png",
   };
 
   const icon = L.icon({
-    iconUrl: icons[type] || '/static/placeholder.png',
+    iconUrl: icons[type] || "/static/placeholder.png",
     iconSize: [32, 32],
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
     shadowSize: [41, 41],
-    shadowAnchor: [12, 41]
+    shadowAnchor: [12, 41],
   });
 
   return L.marker([lat, lng], { icon, title });
@@ -641,20 +652,20 @@ function initMap() {
   if (map) return;
 
   try {
-    const mapDiv = document.getElementById('map');
+    const mapDiv = document.getElementById("map");
     map = L.map(mapDiv, {
       zoomControl: false,
-      attributionControl: true
+      attributionControl: true,
     }).setView([-1.94995, 30.0588], 14);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '© OpenStreetMap contributors'
+      attribution: "© OpenStreetMap contributors",
     }).addTo(map);
 
     if (window.innerWidth > 700) {
-      L.control.zoom({ position: 'topright' }).addTo(map);
+      L.control.zoom({ position: "topright" }).addTo(map);
     }
-    map.attributionControl.setPosition('bottomright');
+    map.attributionControl.setPosition("bottomright");
   } catch (err) {
     console.error("Map init error:", err);
     showError("Failed to initialize map");
@@ -662,9 +673,8 @@ function initMap() {
 }
 
 /* ===========================
-   DRIVER DASHBOARD SCRIPT — Part 3
+   Smooth Marker Movement
    =========================== */
-
 function smoothMoveMarker(marker, newLat, newLng, duration = 800) {
   if (!marker) return;
   const startPos = marker.getLatLng();
@@ -682,6 +692,9 @@ function smoothMoveMarker(marker, newLat, newLng, duration = 800) {
   requestAnimationFrame(animate);
 }
 
+/* ===========================
+   Polyline Drawing
+   =========================== */
 function drawPolyline(poly) {
   if (!map) return;
   if (routePolyline) {
@@ -693,7 +706,7 @@ function drawPolyline(poly) {
   routePolyline = L.polyline(poly, {
     color: "#0077ff",
     weight: 5,
-    opacity: 0.95
+    opacity: 0.95,
   }).addTo(map);
 
   fitMapToActors();
@@ -710,7 +723,9 @@ function fitMapToActors() {
   }
 }
 
-/* Routes & GPS */
+/* ===========================
+   Routes & GPS
+   =========================== */
 async function requestRoute(start, end) {
   if (!start || !end) return;
   const now = Date.now();
@@ -721,7 +736,7 @@ async function requestRoute(start, end) {
     const res = await fetch(BACKEND_URL + "/api/route", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ start, end })
+      body: JSON.stringify({ start, end }),
     });
 
     let j;
@@ -734,9 +749,10 @@ async function requestRoute(start, end) {
 
     if (!res.ok || !j) return;
 
-    let poly = (j.polyline && Array.isArray(j.polyline) && j.polyline.length > 1)
-      ? j.polyline
-      : [[start.lat, start.lng], [end.lat, end.lng]];
+    let poly =
+      j.polyline && Array.isArray(j.polyline) && j.polyline.length > 1
+        ? j.polyline
+        : [[start.lat, start.lng], [end.lat, end.lng]];
 
     drawPolyline(poly);
 
@@ -797,7 +813,9 @@ function startGPS() {
   );
 }
 
-/* Socket Events */
+/* ===========================
+   Socket Events
+   =========================== */
 socket.on("connect", () => {
   console.log("Connected");
   updateConnectionStatus(true);
@@ -873,13 +891,14 @@ socket.on("error_event", (error) => {
   showError("Server error: " + (error.error || "Unknown"));
 });
 
-/* Receiver simulation */
+/* ===========================
+   Receiver Simulation
+   =========================== */
 function simulateReceiver(lat, lng) {
   if (!delivery_id) {
     showError("No active delivery");
     return;
   }
-  // Update local marker immediately for feedback
   if (!receiverMarker && map) {
     receiverMarker = createMarker(lat, lng, "receiver", "Receiver").addTo(map);
   } else if (receiverMarker) {
@@ -888,6 +907,9 @@ function simulateReceiver(lat, lng) {
   socket.emit("receiver_update", { delivery_id, lat, lng });
 }
 
+/* ===========================
+   Cleanup
+   =========================== */
 window.addEventListener("resize", () => {
   if (map) map.invalidateSize();
 });
