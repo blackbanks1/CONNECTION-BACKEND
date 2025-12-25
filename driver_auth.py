@@ -49,56 +49,43 @@ def signup_page():
 
 
 # API ROUTES (JSON) --------------------------------------------
-@driver_auth.route("/signup", methods=["POST"])
-def signup_api():
-    """API endpoint to create a new user account."""
-    data = request.get_json(silent=True) or {}
-
-    username = (data.get("username") or "").strip()
-    phone = (data.get("phone") or "").strip()
-    password = (data.get("password") or "").strip()
-    email = (data.get("email") or None)  # optional now
-
-    # Validate required fields
-    if not phone or not password:
-        return jsonify({"error": "missing_fields", "message": "Phone and password are required"}), 400
-
-    if len(password) < 6:
-        return jsonify({"error": "weak_password", "message": "Password must be at least 6 characters"}), 400
-
-    # Check uniqueness
-    if User.query.filter_by(phone=phone).first():
-        return jsonify({"error": "phone_exists", "message": "Phone number already registered"}), 409
-    if username and User.query.filter_by(username=username).first():
-        return jsonify({"error": "username_exists", "message": "Username already taken"}), 409
-    if email and User.query.filter_by(email=email).first():
-        return jsonify({"error": "email_exists", "message": "Email already registered"}), 409
-
-    # Create new user
-    user = User(
-        username=username or phone,
-        phone=phone,
-        email=email,
-        created_at=datetime.utcnow()
-    )
+@driver_auth.route("/login", methods=["POST"])
+def login_driver():
+    """API endpoint for driver login."""
     try:
-        user.set_password(password)  # hashes securely
-    except ValueError as ve:
-        return jsonify({"error": "weak_password", "message": str(ve)}), 400
+        data = request.get_json() or {}
 
-    if hasattr(user, "start_trial"):
-        user.start_trial()
+        phone = (data.get("phone") or "").strip()
+        password = (data.get("password") or "").strip()
 
-    try:
-        db.session.add(user)
-        db.session.commit()
+        # Validate required fields
+        if not phone or not password:
+            return jsonify({"error": "phone_and_password_required"}), 400
+
+        # Normalize phone for comparison
+        normalized = normalizeRwandaNumber(phone)
+
+        # Look up user by either raw or normalized phone
+        if normalized:
+            user = User.query.filter(
+                (User.phone == phone) | (User.phone == normalized)
+            ).first()
+        else:
+            user = User.query.filter_by(phone=phone).first()
+
+        # Validate credentials
+        if not user or not user.check_password(password):
+            return jsonify({"error": "invalid_credentials"}), 401
+
+        # Store user ID in session (requires app.secret_key configured)
+        session["user_id"] = user.id
+
+        return jsonify({"status": "success"}), 200
+
     except Exception as e:
+        # Catch all unexpected errors
         db.session.rollback()
-        logger.error(f"Signup DB error: {e}")
-        return jsonify({"error": "db_error", "message": "Internal server error"}), 500
-
-    return jsonify({"status": "success", "message": "Account created successfully"}), 201
-# LOGIN / LOGOUT / HOME ----------------------------------------
+        return jsonify({"error": "internal_server_error", "details": str(e)}), 500# LOGIN / LOGOUT / HOME ----------------------------------------
 
 
 
