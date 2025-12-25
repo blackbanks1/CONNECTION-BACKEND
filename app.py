@@ -159,9 +159,9 @@ def create_app():
     jwt = JWTManager(app)
 
     # Secure session configuration
-    app.config['SESSION_COOKIE_SECURE'] = False  # True in production
+    app.config['SESSION_COOKIE_SECURE'] = True  # True in production
     app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SAMESITE'] = 'None'
     app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
     app.secret_key = os.environ.get('SECRET_KEY')
@@ -177,7 +177,7 @@ def create_app():
 
     # Register blueprints
     app.register_blueprint(driver_bp, url_prefix="/driver")
-    app.register_blueprint(driver_auth, url_prefix="/driver")
+    app.register_blueprint(driver_auth, url_prefix="/driver/auth")
     app.register_blueprint(receiver_bp, url_prefix="/t")
     app.register_blueprint(route_bp, url_prefix="/api")
     app.register_blueprint(admin_auth_bp, url_prefix="/admin/auth")

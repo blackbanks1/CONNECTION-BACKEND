@@ -4,14 +4,13 @@ from models import db, JoinToken, Delivery
 
 receiver_bp = Blueprint("receiver_bp", __name__)
 
-@receiver_bp.route("/t/<token>", methods=["GET"])
+@receiver_bp.route("/<token>", methods=["GET"])
 def open_tracking_page(token):
     """Open the tracking page for a receiver using a join token."""
 
     # Look up token
     join_token = JoinToken.query.filter_by(token=token).first()
     if not join_token:
-        # Return JSON if API client, else HTML error
         if request.accept_mimetypes.accept_json:
             return jsonify({"error": "invalid_token"}), 404
         return abort(404)
@@ -33,5 +32,6 @@ def open_tracking_page(token):
     return render_template(
         "track.html",
         token=token,
-        delivery_id=delivery.id
+        delivery_id=delivery.id,
+        delivery=delivery
     )

@@ -5,6 +5,7 @@ from flask import (
     redirect, url_for, render_template
 )
 from models import db, User
+from  utils import normalizeRwandaNumber  # make sure you have this helper
 import logging
 driver_auth = Blueprint("driver_auth", __name__)
 
@@ -99,6 +100,8 @@ def signup_api():
     return jsonify({"status": "success", "message": "Account created successfully"}), 201
 # LOGIN / LOGOUT / HOME ----------------------------------------
 
+
+
 @driver_auth.route("/login", methods=["POST"])
 def login_driver():
     """API endpoint for driver login."""
@@ -112,8 +115,13 @@ def login_driver():
         if not phone or not password:
             return jsonify({"error": "phone_and_password_required"}), 400
 
-        # Look up user by phone
-        user = User.query.filter_by(phone=phone).first()
+        # Normalize phone before lookup
+        normalized = normalizeRwandaNumber(phone)
+        if not normalized:
+            return jsonify({"error": "invalid_phone_format"}), 400
+
+        # Look up user by normalized phone
+        user = User.query.filter_by(phone=normalized).first()
 
         # Validate credentials
         if not user or not user.check_password(password):
@@ -128,7 +136,6 @@ def login_driver():
         # Catch all unexpected errors
         db.session.rollback()
         return jsonify({"error": "internal_server_error", "details": str(e)}), 500
-
 
 @driver_auth.route("/logout", methods=["POST"])
 def logout_driver():

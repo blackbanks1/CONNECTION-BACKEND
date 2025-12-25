@@ -15,6 +15,7 @@
 
   <!-- Socket.IO -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <style>
     :root {
@@ -149,7 +150,7 @@
     /* Map section */
     .map-section {
       display: none;
-      flex: 1;
+      height: 400px;
       width: 100%;
       background: #fff;
       border-radius: 16px;
@@ -231,11 +232,11 @@
       <div id="error-box" class="error-box"></div>
       <div id="success-box" class="success-box"></div>
 
-      <div id="tracking_box">
-               <a id="tracking_link" href="#" target="_blank" class="link-box"></a>
-        <button class="button whatsapp" id="wa_send">Send via WhatsApp</button>
-        <button class="button error" id="end_session">End Session</button>
-      </div>
+<div id="tracking_box" style="display:none;">
+  <a id="tracking_link" href="#" target="_blank" class="link-box"></a>
+  <button class="button whatsapp" id="wa_send">Send via WhatsApp</button>
+  <button class="button error" id="end_session">End Session</button>
+</div>
     </div>
   </main>
 
