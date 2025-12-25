@@ -89,40 +89,6 @@ def login_driver():
 
 
 
-@driver_auth.route("/login", methods=["POST"])
-def login_driver():
-    """API endpoint for driver login."""
-    try:
-        data = request.get_json() or {}
-
-        phone = data.get("phone")
-        password = data.get("password")
-
-        # Validate required fields
-        if not phone or not password:
-            return jsonify({"error": "phone_and_password_required"}), 400
-
-        # Normalize phone before lookup
-        normalized = normalizeRwandaNumber(phone)
-        if not normalized:
-            return jsonify({"error": "invalid_phone_format"}), 400
-
-        # Look up user by normalized phone
-        user = User.query.filter_by(phone=normalized).first()
-
-        # Validate credentials
-        if not user or not user.check_password(password):
-            return jsonify({"error": "invalid_credentials"}), 401
-
-        # Store user ID in session (requires app.secret_key configured)
-        session["user_id"] = user.id
-
-        return jsonify({"status": "success"}), 200
-
-    except Exception as e:
-        # Catch all unexpected errors
-        db.session.rollback()
-        return jsonify({"error": "internal_server_error", "details": str(e)}), 500
 
 @driver_auth.route("/logout", methods=["POST"])
 def logout_driver():
