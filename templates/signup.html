@@ -2,191 +2,229 @@
 <html lang="en">
 <head>
   <title>Connection – Driver Signup</title>
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #dfe6e9, #b2bec3);
+    /* Override dashboard grid for a centered signup card */
+    body.signup-page {
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      overflow: hidden;
+      grid-template-columns: 1fr; 
+      background: var(--bg-primary-dark);
+      padding: 40px 20px;
     }
-
-    .card {
-      background: white;
-      padding: 32px;
-      border-radius: 14px;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.12);
-      width: 92%;
-      max-width: 420px;
-      text-align: center;
-      animation: fadeIn 0.35s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    h2 {
-      margin-bottom: 25px;
-      color: #2d3436;
-      font-weight: bold;
-    }
-
-    label {
-      display: block;
-      text-align: left;
-      font-size: 14px;
-      margin-bottom: 6px;
-      color: #636e72;
-    }
-
-    input {
-      width: 100%;
-      padding: 13px;
-      margin-bottom: 18px;
-      border-radius: 8px;
-      border: 1px solid #b2bec3;
-      font-size: 15px;
-      outline: none;
-      transition: 0.2s;
-    }
-
-    input:focus {
-      border-color: #0984e3;
-      box-shadow: 0 0 0 2px rgba(9,132,227,0.2);
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      background: #0984e3;
-      color: white;
-      font-size: 17px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: 0.25s;
-    }
-
-    button:hover {
-      background: #74b9ff;
-      transform: scale(1.02);
-    }
-
-    .footer {
-      margin-top: 14px;
-      font-size: 15px;
-    }
-
-    a {
-      color: #0984e3;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .error, .success {
-      margin-top: 12px;
-      font-size: 14px;
-      display: none;
-      padding: 10px;
-      border-radius: 6px;
-      animation: fadeIn 0.3s ease-in-out;
-    }
-
-    .error {
-      background: #ffe5e5;
-      color: #d63031;
-    }
-
-    .success {
-      background: #e5fff5;
-      color: #00b894;
-    }
-    * {
-  box-sizing: border-box;
-}
   </style>
 </head>
 
-<body>
-  <div class="card">
-    <h2>Create Your Driver Account</h2>
+<body class="dark-theme signup-page">
 
-    <label for="username">Username</label>
-    <input id="username" type="text" placeholder="Choose a Username" required>
+  <div class="card fade-in" style="max-width: 450px; width: 100%;">
+    <h3>Create Driver Account</h3>
+    
+    <div id="error" class="message error"></div>
+    <div id="success" class="message success"></div>
 
-    <label for="phone">Phone Number</label>
-    <input id="phone" type="tel" placeholder="Phone Number" required>
+    <form id="signupForm">
+      <div style="text-align: left; margin-top: 15px;">
+        <label style="color: var(--text-secondary-dark); font-size: 0.85rem;">Full Name</label>
+        <input type="text" id="name" placeholder="John Doe" required>
+      </div>
 
-    <label for="password">Password</label>
-    <input id="password" type="password" placeholder="Create Password" autocomplete="new-password" required>
+      <div style="text-align: left; margin-top: 15px;">
+        <label style="color: var(--text-secondary-dark); font-size: 0.85rem;">Phone Number</label>
+        <input type="text" id="phone" placeholder="234..." required>
+      </div>
 
-    <button onclick="signup()">Create Account</button>
+      <div style="text-align: left; margin-top: 15px;">
+        <label style="color: var(--text-secondary-dark); font-size: 0.85rem;">Vehicle Type</label>
+        <select id="vehicle_type" required>
+          <option value="" disabled selected>Select your vehicle</option>
+          <option value="bike">Bicycle / Bike</option>
+          <option value="car">Car / Sedan</option>
+          <option value="van">Van / Delivery Truck</option>
+        </select>
+      </div>
 
-    <div id="error" class="error"></div>
-    <div id="success" class="success"></div>
+      <div style="text-align: left; margin-top: 15px;">
+        <label style="color: var(--text-secondary-dark); font-size: 0.85rem;">Password</label>
+        <input type="password" id="password" placeholder="Min. 6 characters" required>
+      </div>
 
-    <div class="footer">
-      Already have an account?
-      <a href="/driver/login">Login</a>
-    </div>
+      <button type="submit" id="signupBtn" class="pulse" style="margin-top: 25px;">
+        Create Account
+      </button>
+    </form>
+
+    <p style="margin-top: 20px; font-size: 0.9rem; color: var(--text-secondary-dark);">
+      Already have an account? 
+      <a href="/driver/login" style="color: var(--accent); text-decoration: none;">Log In</a>
+    </p>
   </div>
 
+
   <script>
+    // DOM Ready
+    document.addEventListener('DOMContentLoaded', function() {
+      const signupBtn = document.getElementById('signupBtn');
+      const usernameInput = document.getElementById('username');
+      const phoneInput = document.getElementById('phone');
+      const passwordInput = document.getElementById('password');
+      const errorBox = document.getElementById('error');
+      const successBox = document.getElementById('success');
+      
+      // Attach signup function to button
+      signupBtn.addEventListener('click', signup);
+      
+      // Allow Enter key to submit
+      usernameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') signup();
+      });
+      
+      phoneInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') signup();
+      });
+      
+      passwordInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') signup();
+      });
+      
+      // Password visibility toggle
+      const togglePassword = document.getElementById('togglePassword');
+      if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function() {
+          const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+          passwordInput.setAttribute('type', type);
+          this.classList.toggle('fa-eye');
+          this.classList.toggle('fa-eye-slash');
+        });
+      }
+    });
+    
+    // Rwanda phone normalization (SAME as login.html and driver.html)
+    function normalizeRwandaNumber(raw) {
+      if (!raw) return null;
+      const digits = raw.replace(/\D/g, "");
+      if (digits.startsWith("2507") && digits.length === 12) return digits;
+      if (digits.startsWith("07") && digits.length === 10) return "250" + digits;
+      if (digits.length === 9 && digits.startsWith("7")) return "250" + digits;
+      return null;
+    }
+    
     async function signup() {
       const username = document.getElementById("username").value.trim();
-      const phone = document.getElementById("phone").value.trim();
+      const rawPhone = document.getElementById("phone").value.trim();
       const password = document.getElementById("password").value.trim();
-
       const errorBox = document.getElementById("error");
       const successBox = document.getElementById("success");
+      const signupBtn = document.getElementById("signupBtn");
+
+      // Clear messages
       errorBox.style.display = "none";
+      errorBox.textContent = "";
       successBox.style.display = "none";
+      successBox.textContent = "";
 
-      if (!username || !phone || !password) {
-        errorBox.innerText = "⚠️ All fields are required.";
-        errorBox.style.display = "block";
+      // Validation
+      if (!username || !rawPhone || !password) {
+        showError("⚠️ All fields are required.");
         return;
       }
-
+      
+      if (username.length < 3) {
+        showError("⚠️ Username must be at least 3 characters.");
+        return;
+      }
+      
       if (password.length < 6) {
-        errorBox.innerText = "⚠️ Password must be at least 6 characters.";
-        errorBox.style.display = "block";
+        showError("⚠️ Password must be at least 6 characters.");
         return;
       }
+      
+      // Normalize phone
+      const normalizedPhone = normalizeRwandaNumber(rawPhone);
+      if (!normalizedPhone) {
+        showError("⚠️ Please enter a valid Rwanda phone number (e.g., 0788 123 456)");
+        return;
+      }
+
+      // Update UI
+      signupBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+      signupBtn.disabled = true;
 
       try {
         const res = await fetch("/driver/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, phone, password })
+          body: JSON.stringify({ 
+            username: username, 
+            phone: rawPhone,  // Send raw, backend will normalize
+            password: password 
+          }),
+          credentials: "include"
         });
 
-        const data = await res.json();
-
-        if (!res.ok) {
-          errorBox.innerText = data.error || "Signup failed.";
-          errorBox.style.display = "block";
+        let data;
+        try {
+          data = await res.json();
+        } catch (e) {
+          console.error("Invalid JSON response:", e);
+          showError("⚠️ Server response error. Please try again.");
+          resetSignupButton();
           return;
         }
 
-        successBox.innerText = "✅ Account created successfully! Redirecting...";
-        successBox.style.display = "block";
+        if (!res.ok) {
+          showError("⚠️ " + (data.error || "Signup failed. Please try again."));
+          resetSignupButton();
+          return;
+        }
 
+        // Success
+        showSuccess("✅ Account created successfully! Redirecting to login...");
+        
+        // Redirect to login page after delay
         setTimeout(() => {
           window.location.href = "/driver/login";
         }, 1500);
 
       } catch (err) {
-        errorBox.innerText = "⚠️ Network error. Try again.";
-        errorBox.style.display = "block";
+        console.error("Signup error:", err);
+        showError("⚠️ Network error. Please check your connection and try again.");
+        resetSignupButton();
+      }
+    }
+    
+    function showError(message) {
+      const errorBox = document.getElementById("error");
+      if (!errorBox) return;
+      errorBox.textContent = message;
+      errorBox.style.display = "block";
+      // Auto-hide after 8 seconds for signup (longer than login)
+      setTimeout(() => {
+        if (errorBox.style.display === "block") {
+          errorBox.style.display = "none";
+        }
+      }, 8000);
+    }
+    
+    function showSuccess(message) {
+      const successBox = document.getElementById("success");
+      if (!successBox) return;
+      successBox.textContent = message;
+      successBox.style.display = "block";
+    }
+    
+    function resetSignupButton() {
+      const signupBtn = document.getElementById("signupBtn");
+      if (signupBtn) {
+        signupBtn.innerHTML = "Create Account";
+        signupBtn.disabled = false;
       }
     }
   </script>

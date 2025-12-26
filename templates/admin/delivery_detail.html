@@ -6,7 +6,7 @@
   <h4 class="mb-0">Delivery Details</h4>
   <div>
     {% if delivery.status != 'delivered' %}
-    <a href="{{ url_for('track', join=delivery.id) }}" target="_blank" class="btn btn-outline-primary">
+    <a href="{{ url_for('receiver_bp.tracking_page', delivery_id=delivery.delivery_id) }}" target="_blank" class="btn btn-outline-primary">
       <i class="fa-solid fa-eye"></i> View Live
     </a>
     {% endif %}

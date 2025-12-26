@@ -2,152 +2,88 @@
 <html lang="en">
 <head>
   <title>Connection – Driver Login</title>
+  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #74b9ff, #0984e3);
+    /* Override the dashboard grid just for the login page to keep it centered */
+    body.login-page {
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      grid-template-columns: 1fr; 
+      background: var(--bg-primary-dark);
     }
-
-    .card {
-      background: white;
-      padding: 30px;
-      border-radius: 14px;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.15);
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-      animation: fadeIn 0.35s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    h2 {
-      margin-bottom: 20px;
-      color: #2d3436;
-      font-weight: bold;
-    }
-
-    .input-group {
-      position: relative;
-      margin-bottom: 16px;
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 12px 40px 12px 12px;
-      border-radius: 8px;
-      border: 1px solid #b2bec3;
-      font-size: 15px;
-      outline: none;
-      transition: 0.2s;
-    }
-
-    .input-group input:focus {
-      border-color: #0984e3;
-      box-shadow: 0 0 0 2px rgba(9,132,227,0.2);
-    }
-
-    .input-group i {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #636e72;
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      background: #0984e3;
-      color: white;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: 0.25s;
-    }
-
-    button:hover {
-      background: #74b9ff;
-      transform: scale(1.02);
-    }
-
-    .footer {
-      margin-top: 14px;
-      font-size: 14px;
-    }
-
-    a {
-      color: #0984e3;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .error, .success {
-      margin-top: 12px;
-      font-size: 14px;
-      display: none;
-      padding: 10px;
-      border-radius: 6px;
-      animation: fadeIn 0.3s ease-in-out;
-    }
-
-    .error {
-      background: #ffe5e5;
-      color: #d63031;
-    }
-
-    .success {
-      background: #e5fff5;
-      color: #00b894;
-    }
-    *, *::before, *::after {
-  box-sizing: border-box;
-}
-
   </style>
 </head>
 
-<body>
-  <div class="card">
-    <h2>Driver Login</h2>
+<body class="dark-theme login-page">
 
-    <div class="input-group">
-      <input id="phone" type="tel" placeholder="Phone Number" required>
-      <i class="fa fa-phone"></i>
-    </div>
+  <div class="card fade-in" style="max-width: 400px; width: 100%;">
+    <h3>Driver Login</h3>
+    
+    <div id="error" class="message error"></div>
+    <div id="success" class="message success"></div>
 
-    <div class="input-group">
-      <input id="password" type="password" placeholder="Password" required>
-      <i class="fa fa-lock"></i>
-    </div>
+    <form id="loginForm">
+      <div style="text-align: left; margin-top: 15px;">
+        <label style="color: var(--text-secondary-dark); font-size: 0.85rem;">Phone Number</label>
+        <input type="text" id="phone" placeholder="234..." required>
+      </div>
 
-    <button id="loginBtn" onclick="login()">Login</button>
+      <div style="text-align: left; margin-top: 15px;">
+        <label style="color: var(--text-secondary-dark); font-size: 0.85rem;">Password</label>
+        <input type="password" id="password" placeholder="••••••••" required>
+      </div>
 
-    <div id="error" class="error"></div>
-    <div id="success" class="success"></div>
+      <button type="submit" id="loginBtn" class="pulse" style="margin-top: 25px;">
+        Login
+      </button>
+    </form>
 
-    <div class="footer">
-      Don’t have an account?
-      <a href="/driver/signup">Sign Up</a>
-    </div>
+    <p style="margin-top: 20px; font-size: 0.9rem; color: var(--text-secondary-dark);">
+      Don't have an account? 
+      <a href="/driver/signup" style="color: var(--accent); text-decoration: none;">Sign Up</a>
+    </p>
   </div>
-
-  <!-- Font Awesome for icons -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
-
   <script>
+    // DOM Ready
+    document.addEventListener('DOMContentLoaded', function() {
+      const loginBtn = document.getElementById('loginBtn');
+      const phoneInput = document.getElementById('phone');
+      const passwordInput = document.getElementById('password');
+      const errorBox = document.getElementById('error');
+      const successBox = document.getElementById('success');
+      
+      // Attach login function to button
+      loginBtn.addEventListener('click', login);
+      
+      // Allow Enter key to submit form
+      phoneInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') login();
+      });
+      
+      passwordInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') login();
+      });
+      
+      // Optional: Password visibility toggle
+      const togglePassword = document.getElementById('togglePassword');
+      if (togglePassword && passwordInput) {
+        togglePassword.style.display = 'block';
+        togglePassword.addEventListener('click', function() {
+          const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+          passwordInput.setAttribute('type', type);
+          this.classList.toggle('fa-eye');
+          this.classList.toggle('fa-eye-slash');
+        });
+      }
+    });
+    
     async function login() {
       const phone = document.getElementById("phone").value.trim();
       const password = document.getElementById("password").value.trim();
@@ -155,46 +91,110 @@
       const successBox = document.getElementById("success");
       const loginBtn = document.getElementById("loginBtn");
 
+      // Clear previous messages
       errorBox.style.display = "none";
+      errorBox.textContent = "";
       successBox.style.display = "none";
+      successBox.textContent = "";
 
+      // Validation
       if (!phone || !password) {
-        errorBox.innerText = "⚠️ Please fill all fields.";
-        errorBox.style.display = "block";
+        showError("⚠️ Please fill all fields.");
         return;
       }
 
-      loginBtn.innerText = "Logging in...";
+      // Validate Rwanda phone number format (consistent with driver.html)
+      function normalizeRwandaNumber(raw) {
+        if (!raw) return null;
+        const digits = raw.replace(/\D/g, "");
+        if (digits.startsWith("2507") && digits.length === 12) return digits;
+        if (digits.startsWith("07") && digits.length === 10) return "250" + digits;
+        if (digits.length === 9 && digits.startsWith("7")) return "250" + digits;
+        return null;
+      }
+      
+      const normalizedPhone = normalizeRwandaNumber(phone);
+      if (!normalizedPhone) {
+        showError("⚠️ Please enter a valid Rwanda phone number (e.g., 0788 123 456)");
+        return;
+      }
+
+      // Update UI
+      loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
       loginBtn.disabled = true;
 
       try {
         const res = await fetch("/driver/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone, password })
+          body: JSON.stringify({ 
+            phone: normalizedPhone, 
+            password: password 
+          }),
+          credentials: "include" // Important for sessions/cookies
         });
 
-        const data = await res.json();
-
-        if (!res.ok || data.status !== "success") {
-          errorBox.innerText = "⚠️ Login failed: " + (data.error || "Unknown error");
-          errorBox.style.display = "block";
-          loginBtn.innerText = "Login";
-          loginBtn.disabled = false;
+        let data;
+        try {
+          data = await res.json();
+        } catch (e) {
+          console.error("Invalid JSON response:", e);
+          showError("⚠️ Server response error. Please try again.");
+          resetLoginButton();
           return;
         }
 
-        successBox.innerText = "✅ Login successful! Redirecting...";
-        successBox.style.display = "block";
+        if (!res.ok || (data.status && data.status !== "success")) {
+          showError("⚠️ Login failed: " + (data.error || data.message || "Invalid credentials"));
+          resetLoginButton();
+          return;
+        }
 
+        // Success
+        showSuccess("✅ Login successful! Redirecting...");
+        
+        // Store any session data if provided
+        if (data.token) {
+          localStorage.setItem('driver_token', data.token);
+        }
+        if (data.driver_id) {
+          localStorage.setItem('driver_id', data.driver_id);
+        }
+
+        // Redirect to dashboard
         setTimeout(() => {
-          window.location.href = "/driver/home";
+          window.location.href = data.redirect || "/driver/home";
         }, 1200);
 
       } catch (err) {
-        errorBox.innerText = "⚠️ Network error. Try again.";
-        errorBox.style.display = "block";
-        loginBtn.innerText = "Login";
+        console.error("Login error:", err);
+        showError("⚠️ Network error. Please check your connection and try again.");
+        resetLoginButton();
+      }
+    }
+    
+    function showError(message) {
+      const errorBox = document.getElementById("error");
+      if (!errorBox) return;
+      errorBox.textContent = message;
+      errorBox.style.display = "block";
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        errorBox.style.display = "none";
+      }, 5000);
+    }
+    
+    function showSuccess(message) {
+      const successBox = document.getElementById("success");
+      if (!successBox) return;
+      successBox.textContent = message;
+      successBox.style.display = "block";
+    }
+    
+    function resetLoginButton() {
+      const loginBtn = document.getElementById("loginBtn");
+      if (loginBtn) {
+        loginBtn.innerHTML = "Login";
         loginBtn.disabled = false;
       }
     }

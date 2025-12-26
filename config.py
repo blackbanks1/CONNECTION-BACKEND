@@ -1,91 +1,105 @@
-import os
-from sqlalchemy.pool import NullPool
+"""
+Configuration settings for Connection delivery tracking system
+"""
 
+import os
+from datetime import timedelta
 
 class Config:
-    # -------------------------
-    # ENVIRONMENT
-    # -------------------------
-    ENV = os.getenv("FLASK_ENV", "development")
-    TESTING_MODE = os.getenv("TESTING_MODE", "false").lower() == "true"
-
-    # -------------------------
-    # GENERAL APP CONFIG
-    # -------------------------
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-
-    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
-    if ENV == "production" and JWT_SECRET_KEY == "dev-jwt-secret":
-        raise RuntimeError("JWT_SECRET_KEY must be set in production")
-
-    # -------------------------
-    # DATABASE CONFIG
-    # -------------------------
-
-
-    db_url = os.environ.get("DATABASE_URL")
+    """Base configuration"""
+    # Flask
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
     
-    if not db_url:
-        # Default to SQLite if nothing is set
-        db_url = "sqlite:///instance/connection.db"
-    elif db_url.startswith("postgres://"):
-        # Fix old-style URLs (Render sometimes gives postgres://)
-        db_url = db_url.replace("postgres://", "postgresql://")
-    
-    # Apply engine options depending on backend
-    if db_url.startswith("sqlite:"):
-        # SQLite: disable pooling and allow multi-thread access
-        SQLALCHEMY_DATABASE_URI = db_url
-        SQLALCHEMY_ENGINE_OPTIONS = {
-            "poolclass": NullPool,
-            "connect_args": {"check_same_thread": False}
-        }
-    else:
-        # PostgreSQL (or other DBs): use safe pooling defaults
-        SQLALCHEMY_DATABASE_URI = db_url
-        SQLALCHEMY_ENGINE_OPTIONS = {
-            "pool_pre_ping": True,    # keep connections alive
-            "pool_recycle": 1800,     # recycle connections every 30 minutes
-            "pool_size": 5,           # base pool size
-            "max_overflow": 10        # allow extra connections if needed
-        }
-    
+    # Database
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///connection.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Session
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=12)
+    SESSION_COOKIE_SECURE = True  # Requires HTTPS
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # Application
+    APP_NAME = "Connection Delivery Tracker"
+    VERSION = "1.0.0"
+    FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
+    
+    # Phone validation
+    DEFAULT_COUNTRY_CODE = '250'
+    PHONE_NUMBER_LENGTH = 12  # 250XXXXXXXXX
+    
+    # Delivery
+    MAX_ACTIVE_DELIVERIES = 3
+    SESSION_TIMEOUT_MINUTES = 30
+    
+    # Maps
+    DEFAULT_MAP_CENTER = [-1.9706, 30.1044]  # Kigali, Rwanda
+    DEFAULT_ZOOM_LEVEL = 12
+    
+    # Real-time updates
+    LOCATION_UPDATE_INTERVAL = 5  # seconds
+    MAX_LOCATION_HISTORY = 100
+    
+    # Security
+    CORS_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', '*').split(',')
+    
+    # Subscription & Pricing
+    TESTING_MODE = os.environ.get('TESTING_MODE', 'true').lower() == 'true'
+    DRIVER_FREE_TRIAL_DAYS = int(os.environ.get('DRIVER_FREE_TRIAL_DAYS', 7))
+    DAILY_PASS_PRICE_RWF = int(os.environ.get('DAILY_PASS_PRICE_RWF', 500))
+    
+    # GraphHopper API
+    GRAPHHOPPER_KEY = os.environ.get('GRAPHHOPPER_KEY', '')
+    
+    # Server
+    HOST = os.environ.get('HOST', '0.0.0.0')
+    PORT = int(os.environ.get('PORT', 5000))
+    
+    # Logging
+    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
 
-    # -------------------------
-    # FORCE HTTPS IN PRODUCTION
-    # -------------------------
-    if ENV == "production":
-        PREFERRED_URL_SCHEME = "https"
+class DevelopmentConfig(Config):
+    """Development configuration"""
+    DEBUG = True
+    TESTING = False
+    SESSION_COOKIE_SECURE = False  # Disable in development
 
-    # -------------------------
-    # SOCKET.IO CONFIG
-    # -------------------------
-    CORS_ALLOWED_ORIGINS = [
-        origin.strip()
-        for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-    ]
+class ProductionConfig(Config):
+    """Production configuration"""
+    DEBUG = False
+    TESTING = False
+    
+    # Production-specific settings
+    REQUIRE_SUBSCRIPTION = os.environ.get('REQUIRE_SUBSCRIPTION', 'true').lower() == 'true'
+    TRIAL_END_NOTIFICATION_DAYS = int(os.environ.get('TRIAL_END_NOTIFICATION_DAYS', 3))
 
-    # -------------------------
-    # ROUTING API KEYS
-    # -------------------------
-    GRAPHHOPPER_KEY = os.getenv("GRAPHHOPPER_KEY", "dev-graphhopper-key")
-    if ENV == "production" and GRAPHHOPPER_KEY == "dev-graphhopper-key":
-        raise RuntimeError("GRAPHHOPPER_KEY must be set in production")
+class TestingConfig(Config):
+    """Testing configuration"""
+    DEBUG = True
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+    SESSION_COOKIE_SECURE = False
 
-    # -------------------------
-    # TRIAL PERIOD SETTINGS
-    # -------------------------
-    DRIVER_FREE_TRIAL_DAYS = int(os.getenv("DRIVER_FREE_TRIAL_DAYS", 7))
+# Rwanda bounding box coordinates (approximate)
+RWANDA_BOUNDS = {
+    'min_lat': -2.84,
+    'max_lat': -1.05,
+    'min_lon': 28.86,
+    'max_lon': 30.90
+}
 
-    # -------------------------
-    # PAYMENT & PRICING (future)
-    # -------------------------
-    DAILY_PASS_PRICE_RWF = int(os.getenv("DAILY_PASS_PRICE_RWF", 500))
+# Configuration dictionary
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'testing': TestingConfig,
+    'default': DevelopmentConfig
+}
 
-    # -------------------------
-    # JWT cookie support
-    # -------------------------
-    JWT_TOKEN_LOCATION = ["cookies"]
-    JWT_COOKIE_SECURE = ENV == "production"
-    JWT_COOKIE_CSRF_PROTECT = ENV == "production"
+def get_config(config_name=None):
+    """Get configuration class"""
+    if config_name is None:
+        config_name = os.environ.get('FLASK_ENV', 'development').lower()
+    return config.get(config_name, config['default'])

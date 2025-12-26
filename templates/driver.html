@@ -5,796 +5,597 @@
   <title>Connection — Driver Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-
-  <!-- Socket.IO -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <style>
-    :root {
-      --accent: #0066ff;
-      --muted: #555;
-      --success: #00b894;
-      --whatsapp: #25D366;
-      --error: #ff4757;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background: #f4f6f9;
-      -webkit-font-smoothing: antialiased;
-      color: #222;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-    /* Navbar */
-    .navbar {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      background: var(--accent);
-      color: #fff;
-      padding: 12px 18px;
-      font-weight: 700;
-      box-shadow: 0 4px 12px rgba(0, 102, 255, 0.15);
-      flex-shrink: 0;
-    }
-    .navbar img { height: 34px; }
-    .status-indicator {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-left: auto;
-      margin-right: 8px;
-      background: var(--error);
-      transition: background 0.3s ease;
-    }
-    .status-indicator.connected {
-      background: var(--success);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.7;} }
-
-    /* Container */
-    .container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-      width: 100%;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    /* Input card */
-    .input-card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 12px 36px rgba(12, 36, 80, 0.06);
-      padding: 32px;
-      width: 100%;
-      max-width: 420px;
-      transition: all 0.45s ease;
-    }
-    .input-card.hidden {
-      opacity: 0;
-      transform: translateY(-20px);
-      pointer-events: none;
-    }
-
-    /* Form elements */
-    h3 { margin: 0 0 16px; font-size: 20px; font-weight: 700; }
-    label { display:block; margin-bottom:6px; color:var(--muted); font-size:13px; font-weight:500; }
-    input {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #e6e9ef;
-      font-size: 15px;
-      transition: all 0.2s ease;
-    }
-    input:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
-    }
-
-    /* Buttons */
-    .button {
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      font-weight: 700;
-      cursor: pointer;
-      background: var(--accent);
-      color: #fff;
-      margin-top: 12px;
-      font-size: 15px;
-      transition: background 0.2s ease;
-    }
-    .button:hover:not(:disabled) { background: #0052cc; }
-    .button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .button.whatsapp { background: var(--whatsapp); }
-    .button.whatsapp:hover:not(:disabled) { background: #1da851; }
-    .button.error { background: var(--error); }
-    .button.error:hover:not(:disabled) { background: #ee5a6f; }
-
-    /* Feedback boxes */
-    .error-box, .success-box {
-      padding: 10px 12px;
-      border-radius: 8px;
-      margin-top: 10px;
-      display: none;
-      font-size: 13px;
-    }
-    .error-box { background:#ffe5e5; border:1px solid var(--error); color:#c92a2a; }
-    .success-box { background:#d4edda; border:1px solid var(--success); color:#155724; }
-
-    #tracking_box { display:none; }
-
-    /* Map section */
-    .map-section {
-      display: none;
-      height: 400px;
-      width: 100%;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 16px 40px rgba(12, 36, 80, 0.08);
-      overflow: hidden;
-      position: relative;
-    }
-    .map-section.show {
-      display: flex;
-      animation: fadeInUp 0.5s ease forwards;
-    }
-    @keyframes fadeInUp {
-      from { opacity:0; transform:translateY(30px) scale(0.98); }
-      to { opacity:1; transform:translateY(0) scale(1); }
-    }
-    #end_session {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      width: auto;
-      padding: 10px 16px;
-      font-size: 14px;
-      z-index: 2100;
-    }
-    #map {
-      width: 100%;
-      height: 100%;
-      min-height: 300px;
-      flex: 1;
-    }
-    .bottom-stats {
-      position: absolute;
-      right: 20px;
-      bottom: 20px;
-      background: rgba(20,20,20,0.92);
-      border-radius: 14px;
-      padding: 12px 16px;
-      font-weight: 600;
-      display: none;
-      z-index: 2000;
-      color: #fff;
-      font-size: 13px;
-      backdrop-filter: blur(6px);
-    }
-
-    @media (max-width: 900px) {
-      .input-card { max-width: 100%; }
-      .container { padding: 14px 16px; }
-      .bottom-stats { bottom: 14px; }
-    }
-    @media (max-width: 450px) {
-      .input-card { padding: 22px; }
-      .container { padding: 12px 10px; }
-      .bottom-stats { bottom: 12px; padding: 8px 12px; font-size: 12px; }
-    }
-    @media (max-width: 350px) { .input-card { padding: 16px; } }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
-<body>
-  <!-- Navbar -->
-  <div class="navbar" role="navigation">
-    <img src="/static/logo.png" alt="logo" onerror="this.src='/static/placeholder.png'">
-    <span>Connection — Driver</span>
-    <div id="connection-status" class="status-indicator disconnected" title="Socket connection status"></div>
-  </div>
 
-  <!-- Main container -->
-  <main class="container" role="main">
-    <div class="input-card" id="input-card">
-      <h3>Start a Delivery Session</h3>
+<body class="dark-theme"> <aside class="panel fade-in">
+    <div class="card">
+      <h3>Driver Console</h3>
+      
+      <div id="setup-section">
+        <label style="color: var(--text-secondary-dark); font-size: 0.85rem;">Driver Phone Number</label>
+        <input type="text" id="driver_phone" placeholder="e.g. 2348123456789">
+        
+        <button id="create_btn" class="pulse">Start Live Session</button>
+      </div>
 
-      <label for="receiver_phone">Receiver Phone Number</label>
-      <input id="receiver_phone" type="tel" placeholder="E.g. 0788 123 456" autocomplete="tel" aria-label="Receiver phone number" />
+      <div id="error-banner" class="message error"></div>
+      <div id="success-banner" class="message success"></div>
 
-      <button class="button" id="create_btn">Create Session</button>
-
-      <p class="notice">Please allow location access when your browser asks.</p>
-
-      <div id="error-box" class="error-box"></div>
-      <div id="success-box" class="success-box"></div>
-
-<div id="tracking_box" style="display:none;">
-  <a id="tracking_link" href="#" target="_blank" class="link-box"></a>
-  <button class="button whatsapp" id="wa_send">Send via WhatsApp</button>
-  <button class="button error" id="end_session">End Session</button>
-</div>
+      <div id="controls" style="display:none; margin-top: 20px;">
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 20px 0;">
+        
+        <p style="font-size: 0.9rem; margin-bottom: 10px;">
+          Share tracking link with customer:
+        </p>
+        <button id="wa_send" style="background: #25D366;">
+          Share via WhatsApp
+        </button>
+        
+        <button id="end_session_btn" style="background: var(--error); margin-top: 10px;">
+          End Delivery
+        </button>
+      </div>
     </div>
-  </main>
+  </aside>
 
-  <!-- Map section -->
-  <div class="map-section" id="map-section">
-    <div id="map"></div>
-    <div id="stats" class="bottom-stats"></div>
-  </div>
-<script>
-/* ===========================
-   DRIVER DASHBOARD SCRIPT
-   =========================== */
+  <div id="map"></div>
 
-const BACKEND_URL = (() => {
-  const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:8000";
-  return window.location.origin;
-})();
 
-const socket = io(BACKEND_URL, {
-  transports: ["websocket", "polling"],
-  reconnection: true,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  reconnectionAttempts: 5,
-});
+  <script>
+  /* ===========================
+     DRIVER DASHBOARD SCRIPT - FIXED VERSION
+     =========================== */
 
-let map = null;
-let driverMarker = null;
-let receiverMarker = null;
-let routePolyline = null;
-let gpsStarted = false;
-let gpsWatchId = null;
+  // GLOBAL VARIABLES
+  let socket = null;
+  let map = null;
+  let driverMarker = null;
+  let receiverMarker = null;
+  let routePolyline = null;
+  let gpsWatchId = null;
+  let delivery_id = null;
+  let hasShownMap = false;
+  let lastRouteCall = 0;
+  const ROUTE_THROTTLE_MS = 800;
 
-let delivery_id = null;
-let hasShownMap = false;
-let lastRouteCall = 0;
-const ROUTE_THROTTLE_MS = 800;
+  // CONFIGURATION
+  const BACKEND_URL = (() => {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") return "http://localhost:8000";
+    return window.location.origin;
+  })();
 
-/* ===========================
-   UI helpers
-   =========================== */
+  /* ===========================
+     UI HELPER FUNCTIONS
+     =========================== */
+  let errorHideTimer = null;
+  let successHideTimer = null;
 
-let errorHideTimer = null;
-let successHideTimer = null;
-
-function showError(message) {
-  const errorBox = document.getElementById("error-box");
-  if (!errorBox) return;
-  errorBox.textContent = message;
-  errorBox.style.display = "block";
-  if (errorHideTimer) clearTimeout(errorHideTimer);
-  errorHideTimer = setTimeout(() => {
-    errorBox.style.display = "none";
-    errorHideTimer = null;
-  }, 5000);
-}
-
-function showSuccess(message) {
-  const successBox = document.getElementById("success-box");
-  if (!successBox) return;
-  successBox.textContent = message;
-  successBox.style.display = "block";
-  if (successHideTimer) clearTimeout(successHideTimer);
-  successHideTimer = setTimeout(() => {
-    successBox.style.display = "none";
-    successHideTimer = null;
-  }, 5000);
-}
-
-function updateConnectionStatus(connected) {
-  const indicator = document.getElementById("connection-status");
-  if (!indicator) return;
-  indicator.className = "status-indicator " + (connected ? "connected" : "disconnected");
-}
-
-/* ===========================
-   Phone utilities (Rwanda)
-   =========================== */
-
-function normalizeRwandaNumber(raw) {
-  if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
-
-  // Accepted forms:
-  //  - 07XXXXXXXX (10 digits starting with 07) -> 2507XXXXXXXX
-  //  - 7XXXXXXXX (9 digits starting with 7) -> 2507XXXXXXXX
-  //  - 2507XXXXXXXX (12 digits) -> unchanged
-  if (digits.startsWith("2507") && digits.length === 12) return digits;
-  if (digits.startsWith("07") && digits.length === 10) return "250" + digits;
-  if (digits.length === 9 && digits.startsWith("7")) return "250" + digits;
-  return null; // invalid format
-}
-
-function formatKm(km) {
-  return (km || 0).toFixed(2) + " km";
-}
-
-function formatMin(min) {
-  return min == null ? "- min" : Math.round(min) + " min";
-}
-
-/* ===========================
-   Map visibility + fix blank tiles
-   =========================== */
-
-function ensureMapVisible() {
-  const section = document.getElementById("map-section");
-  if (!section) return;
-  if (!hasShownMap) {
-    section.classList.add("show");
-    hasShownMap = true;
+  function showError(message) {
+    const errorBox = document.getElementById("error-box");
+    if (!errorBox) return;
+    errorBox.textContent = message;
+    errorBox.style.display = "block";
+    if (errorHideTimer) clearTimeout(errorHideTimer);
+    errorHideTimer = setTimeout(() => {
+      errorBox.style.display = "none";
+      errorHideTimer = null;
+    }, 5000);
   }
-  // Leaflet requires invalidateSize after container becomes visible
-  setTimeout(() => {
-    if (map && typeof map.invalidateSize === "function") {
-      map.invalidateSize();
+
+  function showSuccess(message) {
+    const successBox = document.getElementById("success-box");
+    if (!successBox) return;
+    successBox.textContent = message;
+    successBox.style.display = "block";
+    if (successHideTimer) clearTimeout(successHideTimer);
+    successHideTimer = setTimeout(() => {
+      successBox.style.display = "none";
+      successHideTimer = null;
+    }, 5000);
+  }
+
+  function updateConnectionStatus(connected) {
+    const indicator = document.getElementById("connection-status");
+    if (!indicator) return;
+    indicator.className = "status-indicator " + (connected ? "connected" : "disconnected");
+  }
+
+  /* ===========================
+     PHONE UTILITIES (RWANDA)
+     =========================== */
+  function normalizeRwandaNumber(raw) {
+    if (!raw) return null;
+    const digits = raw.replace(/\D/g, "");
+
+    if (digits.startsWith("2507") && digits.length === 12) return digits;
+    if (digits.startsWith("07") && digits.length === 10) return "250" + digits;
+    if (digits.length === 9 && digits.startsWith("7")) return "250" + digits;
+    return null;
+  }
+
+  function formatKm(km) {
+    return (km || 0).toFixed(2) + " km";
+  }
+
+  function formatMin(min) {
+    return min == null ? "- min" : Math.round(min) + " min";
+  }
+
+  /* ===========================
+     MAP VISIBILITY
+     =========================== */
+  function ensureMapVisible() {
+    const section = document.getElementById("map-section");
+    if (!section) return;
+    if (!hasShownMap) {
+      section.classList.add("show");
+      hasShownMap = true;
     }
-  }, 200);
-}
-
-/* ===========================
-   Session management
-   =========================== */
-
-async function createSession() {
-  const btn = document.getElementById("create_btn");
-  const phoneInput = document.getElementById("receiver_phone");
-  const trackingBox = document.getElementById("tracking_box");
-  const linkElem = document.getElementById("tracking_link");
-
-  if (!phoneInput) {
-    showError("Phone input not found");
-    return;
+    setTimeout(() => {
+      if (map && typeof map.invalidateSize === "function") {
+        map.invalidateSize();
+      }
+    }, 200);
   }
 
-  const normalized = normalizeRwandaNumber(phoneInput.value.trim());
-  if (!normalized) {
-    showError("Enter a valid Rwanda number (e.g., 0788 123 456)");
-    return;
-  }
+  /* ===========================
+     SESSION MANAGEMENT
+     =========================== */
+  async function createSession() {
+    const btn = document.getElementById("create_btn");
+    const phoneInput = document.getElementById("receiver_phone");
+    const trackingBox = document.getElementById("tracking_box");
+    const linkElem = document.getElementById("tracking_link");
 
-  if (btn) btn.disabled = true;
+    if (!phoneInput) {
+      showError("Phone input not found");
+      return;
+    }
 
-  let data;
-  try {
-    const res = await fetch(BACKEND_URL + "/driver/create-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ receiver_phone: normalized }),
-      credentials: "include",
-    });
+    const normalized = normalizeRwandaNumber(phoneInput.value.trim());
+    if (!normalized) {
+      showError("Enter a valid Rwanda number (e.g., 0788 123 456)");
+      return;
+    }
 
+    if (btn) btn.disabled = true;
+
+    let data;
     try {
-      data = await res.json();
-    } catch (e) {
-      showError("Invalid server response");
+      const res = await fetch(BACKEND_URL + "/driver/create-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiver_phone: normalized }),
+        credentials: "include",
+      });
+
+      try {
+        data = await res.json();
+      } catch (e) {
+        showError("Invalid server response");
+        if (btn) btn.disabled = false;
+        return;
+      }
+
+      if (!res.ok) {
+        showError(data?.error || "Failed to create session");
+        if (btn) btn.disabled = false;
+        return;
+      }
+    } catch (err) {
+      console.error(err);
+      showError("Network error: " + (err?.message || "Unknown"));
       if (btn) btn.disabled = false;
       return;
     }
 
-    if (!res.ok) {
-      showError(data?.error || "Failed to create session");
+    // Success flow
+    delivery_id = data.delivery_id;
+
+    if (data.tracking_link && linkElem && trackingBox) {
+      linkElem.href = data.tracking_link;
+      linkElem.textContent = data.tracking_link;
+      trackingBox.style.display = "block";
+      showSuccess("Session created! Share the tracking link.");
+    } else {
+      showError("Tracking link not generated");
       if (btn) btn.disabled = false;
       return;
     }
-  } catch (err) {
-    console.error(err);
-    showError("Network error: " + (err?.message || "Unknown"));
-    if (btn) btn.disabled = false;
-    return;
-  }
 
-  // Success flow
-  delivery_id = data.delivery_id;
-
-  if (data.tracking_link && linkElem && trackingBox) {
-    linkElem.href = data.tracking_link;
-    linkElem.textContent = data.tracking_link;
-    trackingBox.style.display = "block";
-    showSuccess("Session created! Share the tracking link.");
-  } else {
-    showError("Tracking link not generated");
-    if (btn) btn.disabled = false;
-    return;
-  }
-
-  // Join socket room reliably
-  const joinPayload = { delivery_id, role: "driver" };
-  if (socket && socket.connected) {
-    socket.emit("join_delivery", joinPayload);
-  } else if (socket) {
-    const onceConnect = () => {
-      socket.emit("join_delivery", joinPayload);
-      socket.off("connect", onceConnect);
-    };
-    socket.on("connect", onceConnect);
-  }
-
-  // Reveal the map and fix blank tiles after fade-in
-  ensureMapVisible();
-
-  if (btn) btn.disabled = false;
-}
-
-/* ===========================
-   Socket connection indicators
-   =========================== */
-
-socket.on("connect", () => updateConnectionStatus(true));
-socket.on("disconnect", () => updateConnectionStatus(false));
-socket.on("connect_error", () => updateConnectionStatus(false));
-
-/* ===========================
-   Map section logic
-   =========================== */
-
-function showMapSection() {
-  if (hasShownMap) return;
-  hasShownMap = true;
-
-  const inputCard = document.getElementById("input-card");
-  const mapSection = document.getElementById("map-section");
-
-  inputCard.classList.add("hidden");
-  mapSection.classList.add("show");
-
-  // Delay map init until after fade-in
-  setTimeout(() => {
-    initMap();
-
-    if (map) {
-      map.invalidateSize();
-      if (driverMarker) {
-        map.setView(driverMarker.getLatLng(), 16);
+    // Join socket room
+    if (socket) {
+      if (socket.connected) {
+        socket.emit("join_delivery", { delivery_id, role: "driver" });
+      } else {
+        const onceConnect = () => {
+          socket.emit("join_delivery", { delivery_id, role: "driver" });
+          socket.off("connect", onceConnect);
+        };
+        socket.once("connect", onceConnect);
       }
     }
 
-    // GPS setup
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-
-          if (!driverMarker && map) {
-            driverMarker = createMarker(lat, lng, "driver", "Driver");
-            driverMarker.addTo(map);
-          }
-
-          if (delivery_id) {
-            socket.emit("driver_update", { delivery_id, lat, lng, speed: 0 });
-          }
-        },
-        err => {
-          console.warn("GPS failed:", err);
-          showError("Please enable GPS to track delivery");
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
-
-    if (!gpsStarted) {
-      startGPS();
-      gpsStarted = true;
-    }
-  }, 700); // match CSS animation
-}
-
-// Handle resize/orientation changes
-function refreshMapView() {
-  if (map) {
-    map.invalidateSize();
-    if (driverMarker) {
-      map.setView(driverMarker.getLatLng(), 16);
-    }
-  }
-}
-window.addEventListener("resize", refreshMapView);
-window.addEventListener("orientationchange", refreshMapView);
-
-
-/* ===========================
-   Reset UI
-   =========================== */
-function resetUI() {
-  delivery_id = null;
-  hasShownMap = false;
-  document.getElementById("receiver_phone").value = "";
-
-  if (gpsWatchId) {
-    navigator.geolocation.clearWatch(gpsWatchId);
-    gpsWatchId = null;
-  }
-  gpsStarted = false;
-
-  if (map) {
-    map.off();
-    map.remove();
-    map = null;
-  }
-  driverMarker = null;
-  receiverMarker = null;
-  routePolyline = null;
-
-  const inputCard = document.getElementById("input-card");
-  const mapSection = document.getElementById("map-section");
-
-  mapSection.classList.remove("show");
-  inputCard.classList.remove("hidden");
-  document.getElementById("create_btn").disabled = false;
-}
-
-/* ===========================
-   WhatsApp Sharing
-   =========================== */
-let whatsappOpened = false;
-let waitingForReturn = false;
-
-function sendWhatsApp() {
-  const raw = document.getElementById("receiver_phone").value;
-  const normalized = normalizeRwandaNumber(raw);
-  const link = document.getElementById("tracking_link").href;
-
-  if (!link) {
-    showError("Tracking link not available");
-    return;
-  }
-  if (!normalized) {
-    showError("Invalid phone number for WhatsApp");
-    return;
-  }
-
-  const message = "Track me live:\n" + link;
-  window.open("https://wa.me/" + normalized + "?text=" + encodeURIComponent(message), "_blank");
-
-  whatsappOpened = true;
-  waitingForReturn = true;
-}
-
-/* ===========================
-   Handle Return (focus/visibility)
-   =========================== */
-async function handleReturn() {
-  try {
-    await new Promise(resolve => setTimeout(resolve, 700));
+    // Show map
     showMapSection();
-  } catch (error) {
-    console.error("Error showing map section:", error);
-  }
-}
-window.addEventListener("focus", handleReturn);
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    handleReturn();
-  }
-});
-
-/* ===========================
-   End Session
-   =========================== */
-async function endSession() {
-  if (!delivery_id) {
-    showError("No active session to end");
-    return;
+    if (btn) btn.disabled = false;
   }
 
-  try {
-    const res = await fetch(BACKEND_URL + "/driver/end-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ delivery_id }),
-      credentials: "include",
-    });
+  /* ===========================
+     MAP SECTION LOGIC
+     =========================== */
+  function showMapSection() {
+    if (hasShownMap) return;
+    hasShownMap = true;
 
-    const data = await res.json();
-    if (!res.ok) {
-      showError(data.error || "Failed to end session");
-      return;
+    const inputCard = document.getElementById("input-card");
+    const mapSection = document.getElementById("map-section");
+
+    if (inputCard) inputCard.classList.add("hidden");
+    if (mapSection) mapSection.classList.add("show");
+
+    setTimeout(() => {
+      initMap();
+      startGPS();
+      
+      // Center on current position if available
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            if (map) {
+              map.setView([lat, lng], 16);
+            }
+          },
+          () => {
+            // Default to Kigali if GPS not available
+            if (map) {
+              map.setView([-1.94995, 30.0588], 14);
+            }
+          },
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      }
+    }, 300);
+  }
+
+  function refreshMapView() {
+    if (map) {
+      map.invalidateSize();
+    }
+  }
+
+  /* ===========================
+     RESET UI
+     =========================== */
+  function resetUI() {
+    delivery_id = null;
+    hasShownMap = false;
+    
+    const phoneInput = document.getElementById("receiver_phone");
+    if (phoneInput) phoneInput.value = "";
+
+    if (gpsWatchId) {
+      navigator.geolocation.clearWatch(gpsWatchId);
+      gpsWatchId = null;
     }
 
-    showSuccess("Session ended successfully");
-  } catch (err) {
-    console.error(err);
-    showError("Network error: " + err.message);
-  }
-
-  resetUI();
-}
-
-/* ===========================
-   Map & Markers
-   =========================== */
-function createMarker(lat, lng, type, title) {
-  const icons = {
-    driver: "/static/driver.png",
-    receiver: "/static/receiver.png",
-  };
-
-  const icon = L.icon({
-    iconUrl: icons[type] || "/static/placeholder.png",
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-    shadowSize: [41, 41],
-    shadowAnchor: [12, 41],
-  });
-
-  return L.marker([lat, lng], { icon, title });
-}
-
-function initMap() {
-  if (map) return;
-
-  try {
-    const mapDiv = document.getElementById("map");
-    map = L.map(mapDiv, {
-      zoomControl: false,
-      attributionControl: true,
-    }).setView([-1.94995, 30.0588], 14);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-    }).addTo(map);
-
-    if (window.innerWidth > 700) {
-      L.control.zoom({ position: "topright" }).addTo(map);
+    if (map) {
+      map.off();
+      map.remove();
+      map = null;
     }
-    map.attributionControl.setPosition("bottomright");
-  } catch (err) {
-    console.error("Map init error:", err);
-    showError("Failed to initialize map");
-  }
-}
-
-/* ===========================
-   Smooth Marker Movement
-   =========================== */
-function smoothMoveMarker(marker, newLat, newLng, duration = 800) {
-  if (!marker) return;
-  const startPos = marker.getLatLng();
-  const endPos = L.latLng(newLat, newLng);
-  const startTime = performance.now();
-
-  function animate(t) {
-    const progress = Math.min((t - startTime) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    const currentLat = startPos.lat + (endPos.lat - startPos.lat) * eased;
-    const currentLng = startPos.lng + (endPos.lng - startPos.lng) * eased;
-    marker.setLatLng([currentLat, currentLng]);
-    if (progress < 1) requestAnimationFrame(animate);
-  }
-  requestAnimationFrame(animate);
-}
-
-/* ===========================
-   Polyline Drawing
-   =========================== */
-function drawPolyline(poly) {
-  if (!map) return;
-  if (routePolyline) {
-    map.removeLayer(routePolyline);
+    
+    driverMarker = null;
+    receiverMarker = null;
     routePolyline = null;
-  }
-  if (!poly || poly.length === 0) return;
 
-  routePolyline = L.polyline(poly, {
-    color: "#0077ff",
-    weight: 5,
-    opacity: 0.95,
-  }).addTo(map);
+    const inputCard = document.getElementById("input-card");
+    const mapSection = document.getElementById("map-section");
+    const trackingBox = document.getElementById("tracking_box");
+    const createBtn = document.getElementById("create_btn");
 
-  fitMapToActors();
-}
-
-function fitMapToActors() {
-  if (!map) return;
-  let bounds = L.latLngBounds([]);
-  if (driverMarker) bounds.extend(driverMarker.getLatLng());
-  if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
-  if (routePolyline) bounds.extend(routePolyline.getBounds());
-  if (bounds.isValid()) {
-    map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17, animate: true });
-  }
-}
-
-/* ===========================
-   Routes & GPS
-   =========================== */
-async function requestRoute(start, end) {
-  if (!start || !end) return;
-  const now = Date.now();
-  if (now - lastRouteCall < ROUTE_THROTTLE_MS) return;
-  lastRouteCall = now;
-
-  try {
-    const res = await fetch(BACKEND_URL + "/api/route", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ start, end }),
-    });
-
-    let j;
-    try {
-      j = await res.json();
-    } catch {
-      console.error("Invalid route response");
-      return;
-    }
-
-    if (!res.ok || !j) return;
-
-    let poly =
-      j.polyline && Array.isArray(j.polyline) && j.polyline.length > 1
-        ? j.polyline
-        : [[start.lat, start.lng], [end.lat, end.lng]];
-
-    drawPolyline(poly);
-
+    if (mapSection) mapSection.classList.remove("show");
+    if (inputCard) inputCard.classList.remove("hidden");
+    if (trackingBox) trackingBox.style.display = "none";
+    if (createBtn) createBtn.disabled = false;
+    
+    // Update stats
     const stats = document.getElementById("stats");
     if (stats) {
-      const distanceKm = j.distance_km;
-      const etaMin = j.eta_min;
-      stats.style.display = "block";
-      stats.innerText =
-        (distanceKm ? formatKm(distanceKm) : "- km") + " · " +
-        (etaMin ? formatMin(etaMin) : "- min");
+      stats.style.display = "none";
     }
-  } catch (err) {
-    console.error("Route error:", err);
-  }
-}
-
-function startGPS() {
-  if (!navigator.geolocation) {
-    showError("GPS not supported on this device");
-    return;
   }
 
-  gpsWatchId = navigator.geolocation.watchPosition(
-    pos => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const speed = pos.coords.speed || 0;
+  /* ===========================
+     WHATSAPP SHARING
+     =========================== */
+  function sendWhatsApp() {
+    const raw = document.getElementById("receiver_phone")?.value;
+    const normalized = normalizeRwandaNumber(raw);
+    const linkElem = document.getElementById("tracking_link");
+    
+    if (!linkElem || !linkElem.href) {
+      showError("Tracking link not available");
+      return;
+    }
+    
+    if (!normalized) {
+      showError("Invalid phone number for WhatsApp");
+      return;
+    }
+
+    const message = "Track me live:\n" + linkElem.href;
+    window.open("https://wa.me/" + normalized + "?text=" + encodeURIComponent(message), "_blank");
+  }
+
+  /* ===========================
+     END SESSION
+     =========================== */
+  async function endSession() {
+    if (!delivery_id) {
+      showError("No active session to end");
+      return;
+    }
+
+    try {
+      const res = await fetch(BACKEND_URL + "/driver/end-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delivery_id }),
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showError(data.error || "Failed to end session");
+        return;
+      }
+
+      showSuccess("Session ended successfully");
+    } catch (err) {
+      console.error(err);
+      showError("Network error: " + err.message);
+    }
+
+    resetUI();
+  }
+
+  /* ===========================
+     MAP & MARKERS
+     =========================== */
+ function updateMarker(lat, lng) {
+      if (!marker) {
+        marker = L.marker([lat, lng]).addTo(map)
+          .bindTooltip("You (Driver)", { 
+             permanent: true, 
+             direction: 'top',
+             className: 'receiver-label' // This triggers the SCSS style!
+          });
+      } else {
+        marker.setLatLng([lat, lng]);
+      }
+      map.setView([lat, lng]);
+    }
+  function initMap() {
+    if (map) return;
+
+    try {
+      const mapDiv = document.getElementById("map");
+      if (!mapDiv) return;
+      
+      map = L.map(mapDiv, {
+        zoomControl: false,
+        attributionControl: true,
+      }).setView([-1.94995, 30.0588], 14);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+      }).addTo(map);
+
+      if (window.innerWidth > 700) {
+        L.control.zoom({ position: "topright" }).addTo(map);
+      }
+      map.attributionControl.setPosition("bottomright");
+    } catch (err) {
+      console.error("Map init error:", err);
+      showError("Failed to initialize map");
+    }
+  }
+
+  /* ===========================
+     SMOOTH MARKER MOVEMENT
+     =========================== */
+  function smoothMoveMarker(marker, newLat, newLng, duration = 800) {
+    if (!marker) return;
+    const startPos = marker.getLatLng();
+    const endPos = L.latLng(newLat, newLng);
+    const startTime = performance.now();
+
+    function animate(t) {
+      const progress = Math.min((t - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const currentLat = startPos.lat + (endPos.lat - startPos.lat) * eased;
+      const currentLng = startPos.lng + (endPos.lng - startPos.lng) * eased;
+      marker.setLatLng([currentLat, currentLng]);
+      if (progress < 1) requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+  }
+
+  /* ===========================
+     POLYLINE DRAWING
+     =========================== */
+  function drawPolyline(poly) {
+    if (!map) return;
+    if (routePolyline) {
+      map.removeLayer(routePolyline);
+      routePolyline = null;
+    }
+    if (!poly || poly.length === 0) return;
+
+    routePolyline = L.polyline(poly, {
+      color: "#0077ff",
+      weight: 5,
+      opacity: 0.95,
+    }).addTo(map);
+
+    fitMapToActors();
+  }
+
+  function fitMapToActors() {
+    if (!map) return;
+    let bounds = L.latLngBounds([]);
+    if (driverMarker) bounds.extend(driverMarker.getLatLng());
+    if (receiverMarker) bounds.extend(receiverMarker.getLatLng());
+    if (routePolyline) bounds.extend(routePolyline.getBounds());
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [80, 80], maxZoom: 17, animate: true });
+    }
+  }
+
+  /* ===========================
+     ROUTES & GPS
+     =========================== */
+  async function requestRoute(start, end) {
+    if (!start || !end) return;
+    const now = Date.now();
+    if (now - lastRouteCall < ROUTE_THROTTLE_MS) return;
+    lastRouteCall = now;
+
+    try {
+      const res = await fetch(BACKEND_URL + "/api/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ start, end }),
+      });
+
+      let j;
+      try {
+        j = await res.json();
+      } catch {
+        console.error("Invalid route response");
+        return;
+      }
+
+      if (!res.ok || !j) return;
+
+      let poly =
+        j.polyline && Array.isArray(j.polyline) && j.polyline.length > 1
+          ? j.polyline
+          : [[start.lat, start.lng], [end.lat, end.lng]];
+
+      drawPolyline(poly);
+
+      const stats = document.getElementById("stats");
+      if (stats) {
+        const distanceKm = j.distance_km;
+        const etaMin = j.eta_min;
+        stats.style.display = "block";
+        stats.innerText =
+          (distanceKm ? formatKm(distanceKm) : "- km") + " · " +
+          (etaMin ? formatMin(etaMin) : "- min");
+      }
+    } catch (err) {
+      console.error("Route error:", err);
+    }
+  }
+
+  function startGPS() {
+    if (!navigator.geolocation) {
+      showError("GPS not supported on this device");
+      return;
+    }
+
+    gpsWatchId = navigator.geolocation.watchPosition(
+      pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const speed = pos.coords.speed || 0;
+
+        if (!map) initMap();
+
+        if (!driverMarker && map) {
+          driverMarker = createMarker(lat, lng, "driver", "Driver");
+          driverMarker.addTo(map);
+          if (map) {
+            map.setView([lat, lng], 16);
+          }
+        } else if (driverMarker) {
+          smoothMoveMarker(driverMarker, lat, lng);
+        }
+
+        if (delivery_id && socket) {
+          socket.emit("driver_update", { delivery_id, lat, lng, speed });
+        }
+
+        if (receiverMarker) {
+          const rpos = receiverMarker.getLatLng();
+          requestRoute({ lat, lng }, { lat: rpos.lat, lng: rpos.lng });
+        }
+
+        fitMapToActors();
+      },
+      err => {
+        console.warn("GPS error:", err);
+        if (err.code === 1) {
+          showError("GPS permission denied");
+        }
+      },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
+  }
+
+  /* ===========================
+     SOCKET INITIALIZATION & EVENTS
+     =========================== */
+  function initializeSocket() {
+    socket = io(BACKEND_URL, {
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+    });
+
+    // Single connect handler
+    socket.on("connect", () => {
+      console.log("Socket connected");
+      updateConnectionStatus(true);
+      if (delivery_id) {
+        socket.emit("join_delivery", { delivery_id, role: "driver" });
+      }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Socket disconnected");
+      updateConnectionStatus(false);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      updateConnectionStatus(false);
+    });
+
+    socket.on("driver_update", (data) => {
+      if (!data || data.lat === undefined) return;
+      const lat = parseFloat(data.lat);
+      const lng = parseFloat(data.lng);
 
       if (!map) initMap();
 
       if (!driverMarker && map) {
         driverMarker = createMarker(lat, lng, "driver", "Driver");
         driverMarker.addTo(map);
-        map.setView([lat, lng], 16);
       } else if (driverMarker) {
         smoothMoveMarker(driverMarker, lat, lng);
-      }
-
-      if (delivery_id) {
-        socket.emit("driver_update", { delivery_id, lat, lng, speed });
       }
 
       if (receiverMarker) {
@@ -803,124 +604,93 @@ function startGPS() {
       }
 
       fitMapToActors();
-    },
-    err => {
-      console.warn("GPS error:", err);
-      if (err.code === 1) {
-        showError("GPS permission denied");
+    });
+
+    socket.on("receiver_update", (data) => {
+      if (!data || data.lat === undefined) return;
+      const lat = parseFloat(data.lat);
+      const lng = parseFloat(data.lng);
+
+      if (!map) initMap();
+
+      if (!receiverMarker && map) {
+        receiverMarker = createMarker(lat, lng, "receiver", "Receiver");
+        receiverMarker.addTo(map);
+      } else if (receiverMarker) {
+        smoothMoveMarker(receiverMarker, lat, lng);
       }
-    },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-  );
-}
 
-/* ===========================
-   Socket Events
-   =========================== */
-socket.on("connect", () => {
-  console.log("Connected");
-  updateConnectionStatus(true);
-  if (delivery_id) socket.emit("join_delivery", { delivery_id, role: "driver" });
-  if (hasShownMap && !gpsStarted) {
-    startGPS();
-    gpsStarted = true;
-  }
-});
+      if (driverMarker) {
+        const dpos = driverMarker.getLatLng();
+        requestRoute({ lat: dpos.lat, lng: dpos.lng }, { lat, lng });
+      } else if (map) {
+        map.setView([lat, lng], 14);
+      }
 
-socket.on("disconnect", () => {
-  console.log("Disconnected");
-  updateConnectionStatus(false);
-});
+      fitMapToActors();
+    });
 
-socket.on("error", (error) => {
-  console.error("Socket error:", error);
-  showError("Connection error: " + (error.message || "Unknown"));
-});
+    socket.on("join_delivery", (data) => {
+      console.log("Joined delivery:", data);
+    });
 
-socket.on("driver_update", (data) => {
-  if (!data || data.lat === undefined) return;
-  const lat = parseFloat(data.lat);
-  const lng = parseFloat(data.lng);
-
-  if (!map) initMap();
-
-  if (!driverMarker && map) {
-    driverMarker = createMarker(lat, lng, "driver", "Driver");
-    driverMarker.addTo(map);
-  } else if (driverMarker) {
-    smoothMoveMarker(driverMarker, lat, lng);
+    socket.on("error_event", (error) => {
+      console.error("Server error:", error);
+      showError("Server error: " + (error.error || "Unknown"));
+    });
   }
 
-  if (receiverMarker) {
-    const rpos = receiverMarker.getLatLng();
-    requestRoute({ lat, lng }, { lat: rpos.lat, lng: rpos.lng });
+  /* ===========================
+     INITIALIZATION
+     =========================== */
+  function initializeApp() {
+    // Initialize Socket.IO
+    initializeSocket();
+    
+    // Bind button events
+    const createBtn = document.getElementById("create_btn");
+    const waBtn = document.getElementById("wa_send");
+    const endBtn = document.getElementById("end_session_btn");
+    
+    if (createBtn) {
+      createBtn.addEventListener("click", createSession);
+    }
+    
+    if (waBtn) {
+      waBtn.addEventListener("click", sendWhatsApp);
+    }
+    
+    if (endBtn) {
+      endBtn.addEventListener("click", endSession);
+    }
+    
+    // Handle window events
+    window.addEventListener("resize", refreshMapView);
+    window.addEventListener("orientationchange", refreshMapView);
+    
+    // Handle page visibility for WhatsApp return
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && hasShownMap) {
+        refreshMapView();
+      }
+    });
+    
+    // Cleanup on page unload
+    window.addEventListener("beforeunload", () => {
+      if (gpsWatchId) {
+        navigator.geolocation.clearWatch(gpsWatchId);
+      }
+      if (socket) {
+        socket.disconnect();
+      }
+    });
+    
+    console.log("Driver dashboard initialized");
   }
 
-  fitMapToActors();
-});
+  // Start the application when DOM is ready
+  document.addEventListener("DOMContentLoaded", initializeApp);
 
-socket.on("receiver_update", (data) => {
-  if (!data || data.lat === undefined) return;
-  const lat = parseFloat(data.lat);
-  const lng = parseFloat(data.lng);
-
-  if (!map) initMap();
-
-  if (!receiverMarker && map) {
-    receiverMarker = createMarker(lat, lng, "receiver", "Receiver");
-    receiverMarker.addTo(map);
-  } else if (receiverMarker) {
-    smoothMoveMarker(receiverMarker, lat, lng);
-  }
-
-  if (driverMarker) {
-    const dpos = driverMarker.getLatLng();
-    requestRoute({ lat: dpos.lat, lng: dpos.lng }, { lat, lng });
-  } else if (map) {
-    map.setView([lat, lng], 14);
-  }
-
-  fitMapToActors();
-});
-
-socket.on("join_delivery", (data) => {
-  console.log("Joined delivery:", data);
-});
-
-socket.on("error_event", (error) => {
-  console.error("Server error:", error);
-  showError("Server error: " + (error.error || "Unknown"));
-});
-
-/* ===========================
-   Receiver Simulation
-   =========================== */
-function simulateReceiver(lat, lng) {
-  if (!delivery_id) {
-    showError("No active delivery");
-    return;
-  }
-  if (!receiverMarker && map) {
-    receiverMarker = createMarker(lat, lng, "receiver", "Receiver").addTo(map);
-  } else if (receiverMarker) {
-    smoothMoveMarker(receiverMarker, lat, lng);
-  }
-  socket.emit("receiver_update", { delivery_id, lat, lng });
-}
-
-/* ===========================
-   Cleanup
-   =========================== */
-window.addEventListener("resize", () => {
-  if (map) map.invalidateSize();
-});
-
-window.addEventListener("beforeunload", () => {
-  if (gpsWatchId) {
-    navigator.geolocation.clearWatch(gpsWatchId);
-  }
-  if (socket) socket.disconnect();
-});
-</script>
+  </script>
 </body>
 </html>
